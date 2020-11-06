@@ -1,16 +1,16 @@
 
 process pre_processing {
-	container "${params.container.r_tidyverse}"
+  container "${params.container.r_tidyverse}"
 
-	input:
+  input:
     path('manifest.txt')
     val start
     val end
 
-	output:
+  output:
     path "*-mapping_file.tsv", emit: res_ch
 
-	script:
+  script:
     """
     #!/usr/bin/env Rscript
     library(tidyverse)
@@ -74,24 +74,24 @@ process prepare_annovar {
 
 
 process variant_annotation {
-	container "${params.container.variant_annotation}"
+  container "${params.container.variant_annotation}"
   cpus 2
-	publishDir "${params.outdir_run}/variant_annotation/",
+  publishDir "${params.outdir_run}/variant_annotation/",
               mode: 'copy',
               pattern: 'exp_*/*',
               overwrite: true
 
-	input:
+  input:
     tuple val(exp_name), path(mapping_file)
     path('vcf.tgz')
     path('annovar')
     path('annovar_anno')
 
-	 output:
+  output:
      tuple val(exp_name), path('*/*_anno.txt'), emit: anno_file
      path '*/*_multianno.txt', emit: v_multianno_file
 
-	script:
+  script:
     ofile = "${exp_name}_anno.txt"
     """
     mv ${mapping_file} mapping_file.tsv
@@ -111,20 +111,20 @@ process variant_annotation {
 
 
 process database_construct {
- 	container "${params.container.neoflow}"
+  container "${params.container.neoflow}"
   cpus 4
   memory '12 GB'
-	publishDir "${params.outdir_run}/customized_database/", 
+  publishDir "${params.outdir_run}/customized_database/", 
              mode: 'copy', 
              pattern: 'exp_*/*',
              overwrite: true 
 
-	input:
+  input:
     tuple val(exp_name), path(anno_txt)
     path('annovar_anno')
     path('*')
 
-	output:
+  output:
     tuple val(exp_name), path('exp_*/*')
     tuple val(exp_name), path('*/*-var.fasta'), emit: var_ch
     tuple val(exp_name), path('*/*_anno-var.fasta'), emit: target_customized_db_fa 
@@ -133,7 +133,7 @@ process database_construct {
     tuple val(exp_name), path('*/experiment_varinfo/*.txt'), emit: exp_varinfo_ch 
     tuple val(exp_name), path('*/sample_varinfo/*.txt'), emit: sample_varinfo_ch 
 
-	script:
+  script:
     mrna_fa   = "annovar_anno/${params.annovar_buildver}_${params.annovar_protocol}Mrna.fa"
     gene_anno = "annovar_anno/${params.annovar_buildver}_${params.annovar_protocol}.txt"
     output_dir = "./exp_${exp_name}"
@@ -195,22 +195,22 @@ process split_exp_varinfo {
 
 process format_db {
   container "${params.container.python}"
-	publishDir "${params.outdir_run}/customized_database/",
+  publishDir "${params.outdir_run}/customized_database/",
              mode: 'copy',
              pattern: 'exp_*/*',
              overwrite: true
   cpus 8
 
-	input:
+  input:
     tuple val(exp_name),
           path('target_customized_db.fasta')
 
-	output:
+  output:
     tuple val(exp_name),
           path('*/*_format.fasta'),
           emit: out_ch
 
- 	"""
+  """
   #!/usr/bin/env python
 ## https://github.com/bzhanglab/neoflow/blob/master/bin/format_db.py
 import re
@@ -233,29 +233,29 @@ of.close()
 exp_dir = 'exp_${exp_name}'
 os.mkdir(exp_dir)
 os.rename(out_db, os.path.join(exp_dir, out_db))
-	"""
+  """
 }
 
 
 process generate_decoy_db{
   container "${params.container.pga}"
   cpus 1
-	publishDir "${params.outdir_run}/customized_database/",
+  publishDir "${params.outdir_run}/customized_database/",
              mode: 'copy',
              pattern: 'exp_*/*',
              overwrite: true
 
-	input:
+  input:
     path('contaminants.fasta')
     tuple val(exp_name),
           path('format_db.fasta')
 
-	output:
+  output:
     tuple val(exp_name),
           path('*/*_target_decoy.fasta'), 
           emit: search_db_ch 
 
-	script:
+  script:
     """
     #!/usr/bin/env /usr/local/bin/Rscript
     library(PGA)
