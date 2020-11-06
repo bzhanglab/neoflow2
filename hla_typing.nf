@@ -113,18 +113,18 @@ process reads_mapping {
   container  "${params.container.bwa}"
   cpus 8
 
-	input:
+  input:
     tuple val(sample_id), path('*')
     val(hla_ref_prefix)
     path('*')
 
 
-	output:
+  output:
      tuple val(sample_id), 
           path('mapped_{1,2}.sam'),
           emit: res_ch
 
-	script:
+  script:
     """
     bwa mem -t ${task.cpus} -M ${hla_ref_prefix} r1.fastq > mapped_1.sam
     bwa mem -t ${task.cpus} -M ${hla_ref_prefix} r2.fastq > mapped_2.sam
@@ -136,14 +136,14 @@ process run_samtools{
   container  "${params.container.samtools}"
   cpus 4
 
-	input:
-	  path ('*')
+  input:
+    path ('*')
     tuple val(sample_id), path('*') 
 
-	output:
+  output:
     tuple val(sample_id), path('mapped_{1,2}.fastq'), emit: res_ch
 
-	script:
+  script:
     """
     samtools view -@ ${task.cpus} -bS mapped_1.sam > mapped_1.bam
     samtools view -@ ${task.cpus} -bS mapped_2.sam > mapped_2.bam
@@ -155,22 +155,22 @@ process run_samtools{
 
 process run_optitype {
   container  "${params.container.optitype}"
-	publishDir "${params.outdir_run}/hla_type/", 
+  publishDir "${params.outdir_run}/hla_type/", 
               pattern: "optitype_results/${sample_id}",
               mode: 'copy', 
               overwrite: true
   cpus 8
   memory '60 GB'
-	input:
+  input:
       tuple val(sample_id), path('*')
 
-	output:
+  output:
      path "optitype_results/${sample_id}"
      tuple val(sample_id),
            path("optitype_results/${sample_id}/*.tsv"),
            emit: res_ch
 
-	script:
+  script:
     """
     python /opt/OptiType/OptiTypePipeline.py \
       --input mapped_1.fastq mapped_2.fastq \
