@@ -1,6 +1,6 @@
-NeoFlow2: a proteogenomics pipeline for neoantigen discovery
+# NeoFlow2: a proteogenomics pipeline for neoantigen discovery
 
-
+## How to run 
 * run with docker locally
 
 ```console
@@ -24,7 +24,7 @@ To run with awsbatch, you must specify an s3 path as `outdir`, e.g.
 stored under `s3://mybucket/myfolder/run_version`.
 
 
-Input manifest file format (tsv)
+## Input manifest file format (tsv)
 
 ```
 sample	experiment	wxs_file_name	wxs_file_uuid	mgf_file_name	mgf_file_path	vcf_file_name	vcf_file_path
@@ -34,7 +34,7 @@ C3N-03664	2	3908eb72-303d-4316-b8a6-41f76e1bbed5_wxs_gdc_realn.bam	ec399f46-c282
 C3N-03781	2	4fcb737a-a3a1-47b5-b8c7-9363fd57fd4d_wxs_gdc_realn.bam	a71b51a8-06f9-45a8-a7cb-3cbedbf72b66	02CPTAC_HNSCC_Proteome_JHU_20190513.mgf	s3://zhanglab-kail/projects/2019_10_hnscc/data/mgf_files/02CPTAC_HNSCC_Proteome_JHU_20190513.mgf	C3N-03781_T.avinput	s3://zhanglab-kail/projects/neoflow2_development/vcf_files/C3N-03781_T.avinpu
 ```
 
-Important parameters:
+## Important parameters:
 
 ```
   hla_ref_prefix: default 'hla_reference_dna.fasta'
