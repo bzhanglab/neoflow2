@@ -1,8 +1,8 @@
 process generate_id_files {
   label 'r5_2xlarge'
   container "${params.container.r_tidyverse}"
-  cpus 1
-  // memory '60 GB'
+  cpus 8
+  memory '60 GB'
 
   input:
     path('manifest.txt')
@@ -47,7 +47,8 @@ process generate_id_files {
 process get_sample_id {
   container "${params.container.ubuntu}"
   label 'r5_2xlarge'
-  cpus 1
+  cpus 8
+  memory '60 GB'
 
   input:
     path(id_file)
@@ -69,7 +70,7 @@ process download_files {
   container "${params.container.gdc_client}"
   label 'r5_2xlarge'
   cpus 8
-  // memory '60 GB'
+  memory '60 GB'
 
   input:
     path(token)
@@ -88,8 +89,10 @@ process download_files {
 
 
 process bam_to_fastq {
+  label 'r5_2xlarge'
   container  "${params.container.samtools}"
-  cpus 4
+  cpus 8
+  memory '60 GB'
 
   input:
     tuple val(sample_id),
@@ -110,8 +113,10 @@ process bam_to_fastq {
 
 
 process reads_mapping {
+  label 'r5_2xlarge'
   container  "${params.container.bwa}"
   cpus 8
+  memory '60 GB'
 
   input:
     tuple val(sample_id), path('*')
@@ -133,8 +138,10 @@ process reads_mapping {
 
 
 process run_samtools{
+  label 'r5_2xlarge'
   container  "${params.container.samtools}"
-  cpus 4
+  cpus 8
+  memory '60 GB'
 
   input:
     path ('*')
@@ -154,6 +161,7 @@ process run_samtools{
 
 
 process run_optitype {
+  label 'r5_2xlarge'
   container  "${params.container.optitype}"
   publishDir "${params.outdir_run}/hla_type/", 
               pattern: "optitype_results/${sample_id}",

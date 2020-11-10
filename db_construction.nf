@@ -1,6 +1,9 @@
 
 process pre_processing {
+  label 'r5_2xlarge'
   container "${params.container.r_tidyverse}"
+  cpus 8
+  memory '60 GB'
 
   input:
     path('manifest.txt')
@@ -38,7 +41,10 @@ process pre_processing {
 }
 
 process get_exp_name {
+  label 'r5_2xlarge'
   container "${params.container.ubuntu}"
+  cpus 8
+  memory '60 GB'
 
   input:
      path(mapping_file)
@@ -54,28 +60,32 @@ process get_exp_name {
 
 
 process prepare_annovar {
-   container "${params.container.ubuntu}"
-   cpus 8
+  label 'r5_2xlarge'
+  container "${params.container.ubuntu}"
+  cpus 8
+  memory '60 GB'
 
-   input:
-      path('annovar.tgz')
-      path('annovar_anno.tgz')
+  input:
+    path('annovar.tgz')
+    path('annovar_anno.tgz')
 
-    output:
-      path 'annovar', emit: annovar_ch
-      path 'annovar_anno', emit: annovar_anno_ch
-    
-    """
-    tar xvfz annovar.tgz
-    mkdir annovar_anno
-    tar xvfz annovar_anno.tgz -C annovar_anno --strip-components 1
-    """
+  output:
+    path 'annovar', emit: annovar_ch
+    path 'annovar_anno', emit: annovar_anno_ch
+  
+  """
+  tar xvfz annovar.tgz
+  mkdir annovar_anno
+  tar xvfz annovar_anno.tgz -C annovar_anno --strip-components 1
+  """
 }
 
 
 process variant_annotation {
+  label 'r5_2xlarge'
   container "${params.container.variant_annotation}"
-  cpus 2
+  cpus 8
+  memory '60 GB'
   publishDir "${params.outdir_run}/variant_annotation/",
               mode: 'copy',
               pattern: 'exp_*/*',
@@ -111,9 +121,10 @@ process variant_annotation {
 
 
 process database_construct {
+  label 'r5_2xlarge'
   container "${params.container.neoflow}"
-  cpus 4
-  memory '12 GB'
+  cpus 8
+  memory '60 GB'
   publishDir "${params.outdir_run}/customized_database/", 
              mode: 'copy', 
              pattern: 'exp_*/*',
@@ -155,8 +166,10 @@ process database_construct {
 }
 
 process split_exp_varinfo {
+  label 'r5_2xlarge'
   container "${params.container.r_tidyverse}"
-  cpus 1
+  cpus 8
+  memory '60 GB'
 
   publishDir "${params.outdir_run}/customized_database/", 
              mode: 'copy', 
@@ -194,12 +207,14 @@ process split_exp_varinfo {
 }
 
 process format_db {
+  label 'r5_2xlarge'
   container "${params.container.python}"
   publishDir "${params.outdir_run}/customized_database/",
              mode: 'copy',
              pattern: 'exp_*/*',
              overwrite: true
   cpus 8
+  memory '60 GB'
 
   input:
     tuple val(exp_name),
@@ -238,8 +253,10 @@ os.rename(out_db, os.path.join(exp_dir, out_db))
 
 
 process generate_decoy_db{
+  label 'r5_2xlarge'
   container "${params.container.pga}"
-  cpus 1
+  cpus 8
+  memory '60 GB'
   publishDir "${params.outdir_run}/customized_database/",
              mode: 'copy',
              pattern: 'exp_*/*',

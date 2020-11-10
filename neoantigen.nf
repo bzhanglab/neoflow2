@@ -7,25 +7,29 @@ def extractSampleName(file_path, pattern) {
 
 
 process prepare_netmhc {
-   container "${params.container.ubuntu}"
-   cpus 2
+  label 'r5_2xlarge'
+  container "${params.container.ubuntu}"
+  cpus 8
+  memory '60 GB'
 
-   input:
-      path('netmhc.tgz')
+  input:
+    path('netmhc.tgz')
 
-    output:
-      path 'netmhc', emit: netmhc_ch
-    
-    """
-    mkdir netmhc
-    tar xvfz netmhc.tgz -C netmhc --strip-components 1
-    """
+  output:
+    path 'netmhc', emit: netmhc_ch
+  
+  """
+  mkdir netmhc
+  tar xvfz netmhc.tgz -C netmhc --strip-components 1
+  """
 }
 
 
 process split_file {
+  label 'r5_2xlarge'
   container "${params.container.pga}"
   cpus 8
+  memory '60 GB'
 
   input:
     tuple val(sample_name),
@@ -72,12 +76,14 @@ process split_file {
 
 
 process mhc_peptide_binding_prediction {
+  label 'r5_2xlarge'
   container "${params.container.binding_prediction}"
   // publishDir "${params.outdir_run}/binding_prediction/",
   //            mode: 'copy',
   //            pattern: '*/*',
   //            overwrite: true
   cpus 8
+  memory '60 GB'
 
   input:
     tuple val(sample_name),
@@ -106,28 +112,30 @@ process mhc_peptide_binding_prediction {
 
 
 process combine_prediction_results {
-    container "${params.container.r_tidyverse}"
-    cpus 1
+  label 'r5_2xlarge'
+  container "${params.container.r_tidyverse}"
+  cpus 8
+  memory '60 GB'
 
-    input:
-      tuple val(sample_name),
-            path("*")
+  input:
+    tuple val(sample_name),
+          path("*")
 
-    output:
-      tuple val(sample_name),
-            file("${params.neoantigen_output_prefix}_binding_prediction_result.csv"),
-            emit: res_ch
+  output:
+    tuple val(sample_name),
+          file("${params.neoantigen_output_prefix}_binding_prediction_result.csv"),
+          emit: res_ch
 
-    script:
-    """
-    #!/usr/bin/env Rscript
-    library(dplyr)
-    library(readr)
-    fs <- list.files(path="./",pattern="*_binding_prediction_result.csv")
-    a <- lapply(fs,read.csv,stringsAsFactors=FALSE) %>% bind_rows()
-    ofile <- paste("${params.neoantigen_output_prefix}","_binding_prediction_result.csv",sep="")
-    write_csv(a, ofile)
-    """
+  script:
+  """
+  #!/usr/bin/env Rscript
+  library(dplyr)
+  library(readr)
+  fs <- list.files(path="./",pattern="*_binding_prediction_result.csv")
+  a <- lapply(fs,read.csv,stringsAsFactors=FALSE) %>% bind_rows()
+  ofile <- paste("${params.neoantigen_output_prefix}","_binding_prediction_result.csv",sep="")
+  write_csv(a, ofile)
+  """
 }
 
 
@@ -137,27 +145,29 @@ process combine_prediction_results {
  * data preparation
  */
 process prepare_data_for_mapping {
-    container "${params.container.r_tidyverse}"
-    cpus 1
+  label 'r5_2xlarge'
+  container "${params.container.r_tidyverse}"
+  cpus 8
+  memory '60 GB'
 
-    input:
-      tuple val(sample_name),
-            path(mhc_binding_prediction_file)
+  input:
+    tuple val(sample_name),
+          path(mhc_binding_prediction_file)
 
-    output:
-      tuple val(sample_name),
-            path("all_neoepitope.txt"),
-            emit: all_neoepitope_file
+  output:
+    tuple val(sample_name),
+          path("all_neoepitope.txt"),
+          emit: all_neoepitope_file
 
-    script:
-    """
-    #!/usr/bin/env Rscript
-    library(dplyr)
-    library(readr)
-    a <- read_csv("${mhc_binding_prediction_file}")
-    pep <- a %>% select(Neoepitope) %>% distinct()
-    write_tsv(pep,"all_neoepitope.txt",col_names=FALSE)
-    """
+  script:
+  """
+  #!/usr/bin/env Rscript
+  library(dplyr)
+  library(readr)
+  a <- read_csv("${mhc_binding_prediction_file}")
+  pep <- a %>% select(Neoepitope) %>% distinct()
+  write_tsv(pep,"all_neoepitope.txt",col_names=FALSE)
+  """
 }
 
 
@@ -167,6 +177,9 @@ process prepare_data_for_mapping {
  * mapping
  */
 process peptide_mapping {
+  label 'r5_2xlarge'
+  cpus 8
+  memory '60 GB'
   container "${params.container.neoflow}"
 
   input:
@@ -191,34 +204,38 @@ process peptide_mapping {
  * filtering
  */
 process filtering_by_reference {
-    container "${params.container.r_tidyverse}"
-    cpus 1
+  label 'r5_2xlarge'
+  container "${params.container.r_tidyverse}"
+  cpus 8
+  memory '60 GB'
 
-    input:
-      tuple val(sample_name),
-            path(pep2pro_file),
-            path(mhc_binding_prediction_file)
+  input:
+    tuple val(sample_name),
+          path(pep2pro_file),
+          path(mhc_binding_prediction_file)
 
-    output:
-      tuple val(sample_name), 
-            path("${params.neoantigen_output_prefix}_neoepitope_filtered_by_reference.csv"),
-            emit: mhc_binding_prediction_filtered_file
+  output:
+    tuple val(sample_name), 
+          path("${params.neoantigen_output_prefix}_neoepitope_filtered_by_reference.csv"),
+          emit: mhc_binding_prediction_filtered_file
 
-    """
-    #!/usr/bin/env Rscript
-    library(dplyr)
-    library(readr)
-    a <- read_csv("${mhc_binding_prediction_file}")
-    pep2pro <- read_tsv("${pep2pro_file}")
-    a_filter <- a %>% filter(!(Neoepitope %in% pep2pro\$peptide))
-    write_csv(a_filter,"${params.neoantigen_output_prefix}_neoepitope_filtered_by_reference.csv")
-    """
+  """
+  #!/usr/bin/env Rscript
+  library(dplyr)
+  library(readr)
+  a <- read_csv("${mhc_binding_prediction_file}")
+  pep2pro <- read_tsv("${pep2pro_file}")
+  a_filter <- a %>% filter(!(Neoepitope %in% pep2pro\$peptide))
+  write_csv(a_filter,"${params.neoantigen_output_prefix}_neoepitope_filtered_by_reference.csv")
+  """
 }
 
 
 process add_variant_pep_evidence {
+  label 'r5_2xlarge'
   container "${params.container.r_tidyverse}"
-  cpus 1
+  cpus 8
+  memory '60 GB'
   publishDir "${params.outdir_run}/neoantigen_prediction/", mode: "copy", overwrite: true
 
   input:
