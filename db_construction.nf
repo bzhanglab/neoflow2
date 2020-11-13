@@ -107,6 +107,7 @@ process variant_annotation {
     mv ${mapping_file} mapping_file.tsv
     mkdir "exp_${exp_name}"
     tar xvfz vcf.tgz
+    chmod 755 annovar/*.pl
     python /usr/local/bin/variant_annotation.py -i mapping_file.tsv \
       -d annovar_anno \
       -b ${params.annovar_buildver} \

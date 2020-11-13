@@ -5,6 +5,10 @@ def extractSampleName(file_path, pattern) {
     return result[0][1]
 }
 
+def prepend_s3(mystr){ 
+  return "s3:/${mystr}"
+}
+
 
 process prepare_netmhc {
   label 'r5_2xlarge'
@@ -99,6 +103,8 @@ process mhc_peptide_binding_prediction {
 
   script:
   """
+  chmod 755 netmhc/netMHCpan*
+  chmod 755 netmhc/Linux_x86_64/bin/*
   find * -name 'var_info_file_*' | 
   parallel -j ${task.cpus} python /usr/local/bin/binding_prediction.py \
     -p {} \
@@ -294,13 +300,15 @@ workflow neo_antigen {
      var_pep_file
 
   main:
+    hla_type.map{[it[0], prepend_s3(it[1])]}
+            .set{hla_type_new}
     prepare_netmhc(params.netmhc_file)
     // for now the type is "somatic"
     var_info.transpose()
+            .map{[it[0], prepend_s3(it[1])]}
             .map{[extractSampleName("${it[1]}", '-new-varInfo.txt'), "${it[1]}"]}
             .set{var_info_new}
     split_file(var_info_new)
-    input_ch = hla_type.combine(var_db, by:0)
 
     sample_exp_mapping = []
     File csvFile = new File(params.manifest)
@@ -309,34 +317,47 @@ workflow neo_antigen {
       def parts = line.split("\t")
       sample_exp_mapping.add([parts[1], parts[0]])
     }
-    ref_db_ch = Channel.from(sample_exp_mapping)
-                    .combine(var_db)
+    var_db.map{[it[0],prepend_s3(it[1])]}
+          .set{var_db_new}
+    split_file.out.var_info_files.map{[it[0],
+           it[1].collect{it1 -> prepend_s3(it1)}]}
+          .set{var_info_files_ch}
+    var_db_ch = Channel.from(sample_exp_mapping)
+                    .combine(var_db_new)
                     .filter{"${it[0]}"=="${it[2]}"}
                     .map{["${it[1]}","${it[3]}"]}
-    new_ch_2 = ref_db_ch.combine(split_file.out.var_info_files, by:0)
-    new_ch_2 = new_ch_2.combine(hla_type, by:0)
-    // new_ch_2.view()
+    new_ch_2 = var_db_ch.combine(var_info_files_ch, by:0)
+    new_ch_2 = new_ch_2.combine(hla_type_new, by:0)
+    ref_ch.map{[it[0], prepend_s3(it[1])]}
+          .set{ref_ch_new}
+
     mhc_peptide_binding_prediction(
       new_ch_2, prepare_netmhc.out.netmhc_ch
     )   
     combine_prediction_results(mhc_peptide_binding_prediction.out.binding_res)
     prepare_data_for_mapping(combine_prediction_results.out.res_ch)
+    new_ref_ch = Channel.from(sample_exp_mapping)
+                    .combine(ref_ch_new)
+                    .filter{"${it[0]}"=="${it[2]}"}
+                    .map{["${it[1]}","${it[3]}"]}
     input_ch = prepare_data_for_mapping.out.all_neoepitope_file
-                 .combine(ref_db_ch, by:0)
+                 .combine(new_ref_ch, by:0)
     peptide_mapping(input_ch)
     filter_in_ch = peptide_mapping.out.pep2pro
                       .combine(combine_prediction_results.out.res_ch, by:0)
     filtering_by_reference(filter_in_ch)
     // filtering_by_reference.out.mhc_binding_prediction_filtered_file.view()
-    // var_pep_file.view()
-    // var_pep_info.view()
+    var_pep_file.map{[it[0],prepend_s3(it[1])]}
+                 .set{var_pep_file_new}
     new_var_pep_file = Channel.from(sample_exp_mapping)
-                    .combine(var_pep_file)
+                    .combine(var_pep_file_new)
                     .filter{"${it[0]}"=="${it[2]}"}
                     .map{["${it[1]}","${it[3]}"]}
     //  new_var_pep_file.view() 
+     var_pep_info.map{[it[0],prepend_s3(it[1])]}
+                 .set{var_pep_info_new}
      new_var_pep_info = Channel.from(sample_exp_mapping)
-                    .combine(var_pep_info)
+                    .combine(var_pep_info_new)
                     .filter{"${it[0]}"=="${it[2]}"}
                     .map{["${it[1]}","${it[3]}"]}
     //  new_var_pep_info.view() 

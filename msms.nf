@@ -220,7 +220,7 @@ process run_pepquery{
           emit: pepquery_out
 
   """
-  java -Xmx10g -jar /opt/PepQuery_v1.3.0/pepquery-1.3.jar \
+  java -Xmx48g -jar /opt/pepquery-1.6.0/pepquery-1.6.0.jar \
         -ms ${ms_data} \
         -pep ${novel_peptide_tsv} \
         -db ${pv_refdb} \
@@ -272,8 +272,12 @@ process add_pepquery_validation {
   psm_rank_file = "${pepquery_res_folder}/psm_rank.txt"
   if(file.exists(psm_rank_file)){
       psm_rank <- read_tsv(psm_rank_file)
-      psm_rank <- psm_rank %>% filter(pvalue<=0.01,n_ptm==0,rank==1)
-      psms\$pepquery <- ifelse(psms\$peptide %in% psm_rank\$peptide,1,0)
+      if("n_ptm" %in% names(psm_rank)){
+          psm_rank <- psm_rank %>% filter(pvalue<=0.01,n_ptm==0,rank==1)
+          psms\$pepquery <- ifelse(psms\$peptide %in% psm_rank\$peptide,1,0)
+      }else{
+         psms\$pepquery <- 0
+      }
   }else{
       psms\$pepquery <- 0
   }
