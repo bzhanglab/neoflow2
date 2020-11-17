@@ -132,7 +132,9 @@ process reads_mapping {
   script:
     """
     bwa mem -t ${task.cpus} -M ${hla_ref_prefix} r1.fastq > mapped_1.sam
+    rm -rf r1.fastq
     bwa mem -t ${task.cpus} -M ${hla_ref_prefix} r2.fastq > mapped_2.sam
+    rm -rf r2.fastq
     """
 }
 
@@ -153,22 +155,26 @@ process run_samtools{
   script:
     """
     samtools view -@ ${task.cpus} -bS mapped_1.sam > mapped_1.bam
+    rm -rf mapped_1.sam
     samtools view -@ ${task.cpus} -bS mapped_2.sam > mapped_2.bam
+    rm -rf mapped_2.sam
     samtools fastq -@ ${task.cpus} mapped_1.bam > mapped_1.fastq
+    rm -rf mapped_1.bam
     samtools fastq -@ ${task.cpus} mapped_2.bam > mapped_2.fastq
+    rm -rf mapped_2.bam
     """
 }
 
 
 process run_optitype {
-  label 'r5_2xlarge'
+  label 'r5_4xlarge_500g'
   container  "${params.container.optitype}"
   publishDir "${params.outdir_run}/hla_type/", 
               pattern: "optitype_results/${sample_id}",
               mode: 'copy', 
               overwrite: true
-  cpus 8
-  memory '60 GB'
+  cpus 16
+  memory '120 GB'
   input:
       tuple val(sample_id), path('*')
 
