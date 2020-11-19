@@ -25,57 +25,6 @@ process prepare_netmhc {
 }
 
 
-process split_file {
-  label 'r5_2xlarge'
-  container "${params.container.pga}"
-  cpus 8
-  memory '60 GB'
-
-  input:
-    tuple val(sample_name),
-          path(var_info_file)
-
-  output:
-    tuple val(sample_name),
-          path("var_info_*"),
-          emit: var_info_files 
-
-"""
-  #!/usr/bin/env /usr/local/bin/Rscript
-  library(dplyr)
-  library(readr)
-  library(parallel)
-  ncpu <- detectCores()
-  use_ncpu <- 0
-  user_ncpu <- as.numeric("${task.cpus}")
-  if(user_ncpu <= ncpu){
-    use_ncpu <- user_ncpu
-  }
-  if(use_ncpu <= 0){
-    use_ncpu <- ncpu
-  }
-  a <- read_tsv("${var_info_file}")
-  if(use_ncpu > nrow(a)){
-      ## file is small
-      use_ncpu <- 1
-  }
-  # nlines_per_file <- ceiling(nrow(a)/use_ncpu)
-  nlines_per_file <- nrow(a) %/% use_ncpu
-  last_i <- 0
-  for(i in 1:use_ncpu){
-      i1 <- last_i + 1
-      if(i < use_ncpu){    
-          i2 <- i1 + nlines_per_file - 1
-      }else{
-          i2 <- nrow(a)
-      }
-      write_tsv(a[i1:i2,], paste("var_info_",i,sep=""))
-      last_i <- i2
-  }
-  """
-}
-
-
 process mhc_peptide_binding_prediction {
   label 'r5_2xlarge'
   container "${params.container.binding_prediction}"
@@ -89,55 +38,28 @@ process mhc_peptide_binding_prediction {
   input:
     tuple val(sample_name),
          path(var_db),
-         path('var_info_file_??'),
+         path('var_info_file'),
          path(hla_type_file)
     path(netmhcpan_dir)
 
   output:
     tuple val(sample_name), 
-          path("var_info_file_*_binding_prediction_result.csv"),
+          path("${params.neoantigen_output_prefix}_binding_prediction_result.csv"),
           emit: binding_res
 
   script:
   """
   chmod 755 netmhc/netMHCpan*
   chmod 755 netmhc/Linux_x86_64/bin/*
-  find * -name 'var_info_file_*' | 
-  parallel -j ${task.cpus} python /usr/local/bin/binding_prediction.py \
-    -p {} \
+  python /usr/local/bin/binding_prediction.py \
+    -p var_info_file \
     -hla_type ${hla_type_file} \
     -var_db ${var_db} \
-    -var_info {} \
+    -var_info var_info_file \
     -o ./ \
-    -netmhcpan "${netmhcpan_dir}/netMHCpan" \
-  """
-}
-
-
-process combine_prediction_results {
-  label 'r5_2xlarge'
-  container "${params.container.r_tidyverse}"
-  cpus 8
-  memory '60 GB'
-
-  input:
-    tuple val(sample_name),
-          path("*")
-
-  output:
-    tuple val(sample_name),
-          file("${params.neoantigen_output_prefix}_binding_prediction_result.csv"),
-          emit: res_ch
-
-  script:
-  """
-  #!/usr/bin/env Rscript
-  library(dplyr)
-  library(readr)
-  fs <- list.files(path="./",pattern="*_binding_prediction_result.csv")
-  a <- lapply(fs,read.csv,stringsAsFactors=FALSE, colClasses=c("Ref"="character", "Alt"="character","AA_before"="character","AA_after"="character")) %>% bind_rows()
-  ofile <- paste("${params.neoantigen_output_prefix}","_binding_prediction_result.csv",sep="")
-  write_csv(a, ofile)
+    -netmhcpan "${netmhcpan_dir}/netMHCpan" 
+  mv var_info_file_binding_prediction_result.csv \
+     ${params.neoantigen_output_prefix}_binding_prediction_result.csv
   """
 }
 
@@ -302,7 +224,6 @@ workflow neo_antigen {
     var_info.transpose()
             .map{[extractSampleName("${it[1]}", '-new-varInfo.txt'), it[1]]}
             .set{var_info_new}
-    split_file(var_info_new)
 
     sample_exp_mapping = []
     File csvFile = new File(params.manifest)
@@ -315,13 +236,12 @@ workflow neo_antigen {
                     .combine(var_db)
                     .filter{it[0]==it[2]}
                     .map{[it[1],it[3]]}
-    new_ch_2 = var_db_ch.combine(split_file.out.var_info_files, by:0)
+    new_ch_2 = var_db_ch.combine(var_info_new, by:0)
     new_ch_2 = new_ch_2.combine(hla_type, by:0)
     mhc_peptide_binding_prediction(
       new_ch_2, prepare_netmhc.out.netmhc_ch
     )   
-    combine_prediction_results(mhc_peptide_binding_prediction.out.binding_res)
-    prepare_data_for_mapping(combine_prediction_results.out.res_ch)
+    prepare_data_for_mapping(mhc_peptide_binding_prediction.out.binding_res)
     new_ref_ch = Channel.from(sample_exp_mapping)
                     .combine(ref_ch)
                     .filter{it[0]==it[2]}
@@ -330,7 +250,7 @@ workflow neo_antigen {
                  .combine(new_ref_ch, by:0)
     peptide_mapping(input_ch)
     filter_in_ch = peptide_mapping.out.pep2pro
-                      .combine(combine_prediction_results.out.res_ch, by:0)
+                      .combine(mhc_peptide_binding_prediction.out.binding_res, by:0)
     filtering_by_reference(filter_in_ch)
     // filtering_by_reference.out.mhc_binding_prediction_filtered_file.view()
     new_var_pep_file = Channel.from(sample_exp_mapping)
