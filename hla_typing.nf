@@ -89,7 +89,7 @@ process download_files {
 
 
 process bam_to_fastq {
-  label 'r5_2xlarge'
+  label 'r5_2xlarge_500g'
   container  "${params.container.samtools}"
   cpus 8
   memory '60 GB'
@@ -113,7 +113,7 @@ process bam_to_fastq {
 
 
 process reads_mapping {
-  label 'r5_2xlarge'
+  label 'r5_2xlarge_500g'
   container  "${params.container.bwa}"
   cpus 8
   memory '60 GB'
@@ -140,7 +140,7 @@ process reads_mapping {
 
 
 process run_samtools{
-  label 'r5_2xlarge'
+  label 'r5_2xlarge_500g'
   container  "${params.container.samtools}"
   cpus 8
   memory '60 GB'
