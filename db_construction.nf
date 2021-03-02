@@ -306,7 +306,7 @@ process split_exp_varinfo {
   mani <- read_tsv("manifest.txt", col_types = cols(experiment = col_character()))
   samples <- mani %>% filter(experiment=="${exp_name}") %>% pull(sample)
 
-  merg_file <- paste0("${exp_name}"", "-anno_varInfor_with_fusion.txt")
+  merg_file <- paste0("${exp_name}", "-anno_varInfor_with_fusion.txt")
   merg_infor <- fread(merg_file)
   dir.create(paste0("exp_", "${exp_name}", "/sample_varinfo"), recursive=TRUE)
   for(sample in samples) {
