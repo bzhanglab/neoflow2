@@ -304,16 +304,16 @@ process split_exp_varinfo {
   library(stringr)
 
   mani <- read_tsv("manifest.txt", col_types = cols(experiment = col_character()))
-  samples <- mani %>% filter(experiment==${exp_name}) %>% pull(sample)
+  samples <- mani %>% filter(experiment=="${exp_name}") %>% pull(sample)
 
-  merg_file <- paste0(${exp_name}, "-anno_varInfor_with_fusion.txt")
+  merg_file <- paste0("${exp_name}"", "-anno_varInfor_with_fusion.txt")
   merg_infor <- fread(merg_file)
-  dir.create(paste0('exp_', ${exp_name}, "/sample_varinfo"), recursive=TRUE)
+  dir.create(paste0("exp_", "${exp_name}", "/sample_varinfo"), recursive=TRUE)
   for(sample in samples) {
     column_name <- as.name(paste0("sample:", sample))
     filter_infor <- merg_infor %>%
       filter(UQ(column_name) == 1)
-    write.table(filter_infor, file = paste0("exp_", ${exp_name}, "/sample_varinfo/", sample, "-new-varInfo.txt"), 
+    write.table(filter_infor, file = paste0("exp_", "${exp_name}", "/sample_varinfo/", sample, "-new-varInfo.txt"), 
       sep = "\t", quote = FALSE, row.names = FALSE)
   }
   """           
@@ -389,10 +389,10 @@ process generate_decoy_db{
     """
     #!/usr/bin/env /usr/local/bin/Rscript
     library(PGA)
-    output_dir <- file.path(paste0("exp_", ${exp_name}))
+    output_dir <- file.path(paste0("exp_", "${exp_name}"))
     dir.create(output_dir)
-    out_target_decoy_db <- file.path(paste0("exp_", ${exp_name}),
-         paste0(${exp_name}, "_target_decoy.fasta"))
+    out_target_decoy_db <- file.path(paste0("exp_", "${exp_name}"),
+         paste0("${exp_name}", "_target_decoy.fasta"))
     buildTargetDecoyDB(db="format_db.fasta",
       decoyPrefix="XXX_",
       cont_file="contaminants.fasta",
