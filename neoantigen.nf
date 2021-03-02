@@ -230,11 +230,14 @@ workflow neo_antigen {
             .set{var_info_new}
 
     sample_exp_mapping = []
-    File csvFile = new File(params.manifest)
-    csvFile.eachLine { line, number ->
-      if (number == 1) return
-      def parts = line.split("\t")
-      sample_exp_mapping.add([parts[1], parts[0]])
+    csvFile = file(params.manifest)
+    allLines  = csvFile.readLines()
+    number = 0
+    for( line : allLines ) {
+        number++
+        if (number == 1) continue
+        def parts = line.split("\t")
+        sample_exp_mapping.add([parts[1], parts[0]])
     }
     var_db_ch = Channel.from(sample_exp_mapping)
                     .combine(var_db)
