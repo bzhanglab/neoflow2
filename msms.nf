@@ -18,105 +18,81 @@ process extract_exp_info {
   exp <- mani %>% group_by(experiment)   
   experiments <- group_split(exp)
   for (i in 1:length(experiments)){
-    write_tsv(experiments[[i]], paste0("exp_", i, ".tsv"), col_names=FALSE)
+    exp_name <- unique(experiments[[i]][["experiment"]])
+    write_tsv(experiments[[i]], paste0("exp_", exp_name, ".tsv"), col_names=FALSE)
   }
   """
 }
 
-process extract_mgf_path {
+process set_exp_info {
   label 'r5_2xlarge'
   container "${params.container.ubuntu}"
   cpus 8
   memory '60 GB'
 
   input:
-    path('exp_info.txt')
+     path(exp_info_file)
   
   output:
-    tuple env(experiment_name),
-          env(mgf_path),
-          emit: mgf_ch
-
+     tuple env(exp_name), path(exp_info_file), emit: res_ch
+     
   """
-  while IFS=\$'\\t' read -r -a row
-  do
-    experiment_name="\${row[1]}"
-    mgf_path="\${row[5]}"
-    break
-  done < exp_info.txt
+  exp_info=${exp_info_file}
+  exp_name=\${exp_info#exp_}
+  exp_name=\${exp_name%.tsv}
   """
 }
 
 
-process msms_searching{
+process extract_mzml_path {
   label 'r5_2xlarge'
   container "${params.container.neoflow}"
   cpus 8
   memory '60 GB'
   publishDir "${params.outdir_run}/msms_searching/",
               mode: 'copy',
-              pattern: 'exp_*/*',
+              pattern: 'exp_*/*.mzid',
               overwrite: true
 
   input:
-    tuple val(experiment_name),  
-          path(ms_file),
-          path(search_db)
+    tuple val(experiment), path('exp_info.txt'), path('ref.fasta')
     path(msms_para_file)
-
+  
   output:
-    tuple val(experiment_name),
-          path("exp_*/${res_file}"),
-          emit: psm_raw_files
+    tuple val(experiment),
+          path("exp_*/*.mzML"),
+          emit: mzml_ch
+    tuple val(experiment),
+          path("exp_*/*.mzid"),
+          emit: mzid_ch
 
-  script:
-    if ("${params.search_engine}" == "msgf") {
-        res_file = "${ms_file.baseName}.mzid"
-        """
-        #!/bin/sh
-        java -Xmx${params.search_engine_mem}g -jar /opt/MSGFPlus.jar \
-            -thread ${task.cpus} \
-            -s ${ms_file} \
-            -d ${search_db} \
-            -conf ${msms_para_file} \
-            -tda 0 \
-            -o ${ms_file.baseName}.mzid
-        mkdir exp_${experiment_name}
-        mv *.mzid exp_${experiment_name}
-        """
-    }else if("${params.search_engine}" == "comet") {
-        res_file = "${ms_file.baseName}_rawResults.txt"
-        """
-        #!/bin/sh
-        /opt/comet.2018014.linux.exe -P${msms_para_file} -N${ms_file.baseName}_rawResults -D${search_db} ${ms_file}
-        sed -i '1d' ${ms_file.baseName}_rawResults.txt
-        sed -i '1 s/\$/\tna/' ${ms_file.baseName}_rawResults.txt
-        mkdir exp_${experiment_name}
-        mv *_rawResults.txt exp_${experiment_name}
-        """
-    }else if("${params.search_engine}" == "xtandem"){
-        ms_file_name = "${ms_file.baseName}"
-        xml_input = "${ms_file.baseName}_input.xml"
-        res_file = "${ms_file_name}.mzid"
-        """
-        python3 /opt/neoflow/bin/generate_xtandem_para_xml.py ${msms_para_file} ${ms_file} ${search_db} ${ms_file_name} ${xml_input}
-        ## users must provide the main search parameter file for X!Tandem search
-        /opt/tandem-linux-17-02-01-4/bin/tandem.exe ${xml_input}
-        ## convert xml to mzid
-        java -Xmx${params.search_engine_mem}g -jar /opt/mzidlib-1.7/mzidlib-1.7.jar Tandem2mzid \
-            ${ms_file_name}.xml \
-            ${ms_file_name}.mzid \
-            -outputFragmentation false \
-            -decoyRegex XXX_ \
-            -databaseFileFormatID MS:1001348 \
-            -massSpecFileFormatID MS:1001062 \
-            -idsStartAtZero false \
-            -compress false \
-            -proteinCodeRegex "\\S+"
-        mkdir exp_${experiment_name}
-        mv *.mzid exp_${experiment_name}
-        """
-  }
+  """
+  filename="exp_info.txt"
+  output_dir="exp_${experiment}"
+  mkdir -p \${output_dir}
+  head -n 1 \$filename | while read -r sample experiment wxs_file_name wxs_file_uuid mzml_files mzml_links maf_file
+  do 
+    IFS=';' read -r -a allUrls <<< "\$mzml_links"
+    IFS=';' read -r -a allNames <<< "\$mzml_files"
+    for index in "\${!allUrls[@]}"
+    do
+      eachUrl="\${allUrls[\$index]}"
+      eachName="\${allNames[\$index]}"
+      echo "Downloading \$eachUrl........."
+      wget -c "\$eachUrl" -O \${output_dir}/\${eachName} # -c allows resuming the failed or stopped downloads
+      gunzip \${output_dir}/\${eachName}
+      msmsName=\${output_dir}/\${eachName}
+      msmsName=\${msmsName/.gz/}
+      java -Xmx${params.search_engine_mem}g -jar /opt/MSGFPlus.jar \
+        -thread ${task.cpus}\
+        -s \$msmsName \
+        -d ref.fasta \
+        -tda 0 \
+        -o \${msmsName}.mzid \
+        -conf ${msms_para_file}
+    done   # -c also eliminates redownload if a file already exists (with same size) in the current directory.
+  done 
+  """
 }
 
 
@@ -205,7 +181,7 @@ process run_pepquery{
   memory '60 GB'
   publishDir "${params.outdir_run}/pepquery/",
               mode: 'copy',
-              pattern: '*/pepquery',
+              pattern: 'exp_*/pepquery',
               overwrite: true
 
   input:
@@ -220,8 +196,12 @@ process run_pepquery{
           emit: pepquery_out
 
   """
-  java -Xmx48g -jar /opt/pepquery-1.6.0/pepquery-1.6.0.jar \
-        -ms ${ms_data} \
+  mkdir -p pepquery_index
+  java -cp /opt/pepquery-1.6.2/pepquery-1.6.2.jar main.java.index.BuildMSlibrary \
+       -i ./  -o pepquery_index
+  mkdir -p pepquery
+  java -Xmx48g -jar /opt/pepquery-1.6.2/pepquery-1.6.2.jar \
+        -ms pepquery_index \
         -pep ${novel_peptide_tsv} \
         -db ${pv_refdb} \
         -fixMod ${params.pv_fixmod} \
@@ -296,19 +276,16 @@ workflow msms_search {
 
   main:
     extract_exp_info(params.manifest)
-    extract_mgf_path(extract_exp_info.out.exp_ch.flatten())
-    ch_1 = extract_mgf_path.out.mgf_ch
-    ch_2 = search_db_ch
-    search_ch = ch_1.combine(ch_2, by:0)
-    msms_searching(search_ch, params.search_para_file)
-    
-    ch_1 = msms_searching.out.psm_raw_files
+    set_exp_info(extract_exp_info.out.exp_ch.flatten())
+    combined_ch = set_exp_info.out.res_ch.combine(search_db_ch, by:0)
+    extract_mzml_path(combined_ch, params.search_para_file)
+    ch_1 = extract_mzml_path.out.mzid_ch
     fdr_ch = ch_1.combine(search_db_ch, by:0)
     calculate_fdr(fdr_ch)
     prepare_pepquery_input(calculate_fdr.out.pga_result_folder)
 
-    mgf_ch = extract_mgf_path.out.mgf_ch
-    pepquery_in_1 = mgf_ch.combine(ref_ch, by:0)
+    mzml_ch = extract_mzml_path.out.mzml_ch
+    pepquery_in_1 = mzml_ch.combine(ref_ch, by:0)
     novel_peptide_ch = prepare_pepquery_input.out.novel_peptide_tsv
     pepquery_in = pepquery_in_1.combine(novel_peptide_ch, by:0)
     run_pepquery(pepquery_in)

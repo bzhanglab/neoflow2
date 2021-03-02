@@ -28,10 +28,10 @@ process prepare_netmhc {
 process mhc_peptide_binding_prediction {
   label 'r5_2xlarge'
   container "${params.container.binding_prediction}"
-  // publishDir "${params.outdir_run}/binding_prediction/",
-  //            mode: 'copy',
-  //            pattern: '*/*',
-  //            overwrite: true
+  publishDir "${params.outdir_run}/binding_prediction/",
+             mode: 'copy',
+             pattern: '*/*',
+             overwrite: true
   cpus 8
   memory '60 GB'
 
@@ -44,7 +44,7 @@ process mhc_peptide_binding_prediction {
 
   output:
     tuple val(sample_name), 
-          path("${params.neoantigen_output_prefix}_binding_prediction_result.csv"),
+          path("${sample_name}/${params.neoantigen_output_prefix}_binding_prediction_result.csv"),
           emit: binding_res
 
   script:
@@ -58,8 +58,9 @@ process mhc_peptide_binding_prediction {
     -var_info var_info_file \
     -o ./ \
     -netmhcpan "${netmhcpan_dir}/netMHCpan" 
+  mkdir ${sample_name}
   mv var_info_file_binding_prediction_result.csv \
-     ${params.neoantigen_output_prefix}_binding_prediction_result.csv
+     ${sample_name}/${params.neoantigen_output_prefix}_binding_prediction_result.csv
   """
 }
 
@@ -87,9 +88,10 @@ process prepare_data_for_mapping {
   script:
   """
   #!/usr/bin/env Rscript
-  library(dplyr)
-  library(readr)
-  a <- read_csv("${mhc_binding_prediction_file}")
+  library(tidyverse)
+  df <- read.table("${mhc_binding_prediction_file}", header=TRUE,
+        check.names=FALSE, sep=",")
+  a <- as_tibble(df)
   pep <- a %>% select(Neoepitope) %>% distinct()
   write_tsv(pep,"all_neoepitope.txt",col_names=FALSE)
   """
@@ -146,10 +148,12 @@ process filtering_by_reference {
 
   """
   #!/usr/bin/env Rscript
-  library(dplyr)
-  library(readr)
-  a <- read_csv("${mhc_binding_prediction_file}")
-  pep2pro <- read_tsv("${pep2pro_file}")
+  library(tidyverse)
+  df <- read.table("${mhc_binding_prediction_file}", header=TRUE,
+                   check.names=FALSE, sep=",")
+  a <- as_tibble(df)
+  df <- read.table("${pep2pro_file}", header=TRUE, check.names=FALSE, sep="\t")
+  pep2pro <- as_tibble(df)
   a_filter <- a %>% filter(!(Neoepitope %in% pep2pro\$peptide))
   write_csv(a_filter,"${params.neoantigen_output_prefix}_neoepitope_filtered_by_reference.csv")
   """

@@ -1,7 +1,13 @@
 #!/usr/bin/env nextflow
 
 nextflow.enable.dsl = 2
+
 assert params.run_version
+assert params.manifest
+assert params.maf
+assert params.fusion_file
+
+// these have default values
 assert params.search_engine
 assert params.search_para_file
 

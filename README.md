@@ -6,6 +6,7 @@
 ```console
 nextflow run bzhanglab/neoflow2 -r main -profile docker \
    --manifest /path/to/my_manifest.tsv \
+   --maf /path/to/my.maf \
    --run_version neoflow_2020_11_06
 ```
 
@@ -14,6 +15,7 @@ nextflow run bzhanglab/neoflow2 -r main -profile docker \
 ```console
 nextflow run bzhanglab/neoflow2 -r main -profile awsbatch \
    --manifest /path/to/my_manifest.tsv \
+   --maf /path/to/my.maf \
    -bucket-dir s3://mybucket/workdir/2020-11-06 \
    --outdir s3://mybucket/neoflow2-results \
    --run_version neoflow_2020_11_06
