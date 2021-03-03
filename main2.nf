@@ -56,6 +56,27 @@ workflow {
   exp_sample_mapping = [:]
   exp_names = []
   sample_names = []
+  
+  csvFile = file(params.manifest)
+  allLines  = csvFile.readLines()
+  number = 0
+  for( line : allLines ) {
+    number++
+    if (number == 1) continue
+    def parts = line.split("\t")
+    if (exp_sample_mapping.containsKey(parts[1])){
+       exp_sample_mapping[parts[1]].add(parts[0])
+    } else{
+       exp_sample_mapping[parts[1]] = [parts[0]]
+    }
+    exp_names.add(parts[1])
+    sample_names.add(parts[0])
+  }
+
+  
+
+
+
   File csvFile = new File(params.manifest)
   csvFile.eachLine { line, number ->
     if (number == 1) return
