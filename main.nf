@@ -6,6 +6,12 @@ assert params.run_version
 assert params.manifest
 assert params.maf
 assert params.fusion_file
+assert params.mzml
+
+if (params.mzml == 'pdc') {
+  // this is where downloaded files will be stored first 
+  assert params.mzml_s3_prefix
+} 
 
 // these have default values
 assert params.search_engine
@@ -40,7 +46,7 @@ def neoflowHeader() {
     return header.stripIndent()
 }
 
-
+include { mzml } from './mzml'
 include { hla_typing } from './hla_typing'
 include { database_construction } from './db_construction'
 include { msms_search } from './msms'
@@ -50,6 +56,15 @@ include { neo_antigen } from './neoantigen'
 // ====== main workflow ===========
 workflow {
   log.info neoflowHeader()
+  // if the mzml source is from PDC,
+  // first thing to do is download the data to s3,
+  // then the manifest file will be updated with the new s3 URI
+  // otherwise, it is expected that the links for mzml files 
+  // are already s3 URIs
+  if (params.mzml == 'pdc'){ 
+     // this needs to be updated to include tar step
+     mzml()
+  }
   hla_typing()
   database_construction()
   msms_search(

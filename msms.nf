@@ -44,7 +44,31 @@ process set_exp_info {
 }
 
 
-process extract_mzml_path {
+process extract_s3_path {
+  container "${params.container.python}"
+  cpus 8
+  memory '60 GB'
+  label 'r5_2xlarge'
+
+  input:
+    tuple val(experiment), path('exp_info.txt')
+
+  output:
+    tuple val(experiment), env(s3_uri), emit: s3_ch
+
+  """
+  # only read the first line
+   while IFS=\$'\\t' read -r -a myline
+   do
+      s3_uri="\${myline[5]}"
+      break
+   done < exp_info.txt
+  """
+
+}
+
+
+process peptide_identification {
   label 'r5_2xlarge'
   container "${params.container.neoflow}"
   cpus 8
@@ -55,7 +79,7 @@ process extract_mzml_path {
               overwrite: true
 
   input:
-    tuple val(experiment), path('exp_info.txt'), path('ref.fasta')
+    tuple val(experiment), path('exp_info.txt'), path(mzml_tar), path('ref.fasta')
     path(msms_para_file)
   
   output:
@@ -67,19 +91,18 @@ process extract_mzml_path {
           emit: mzid_ch
 
   """
+  # mzml_tar contains all mzml file
   filename="exp_info.txt"
   output_dir="exp_${experiment}"
   mkdir -p \${output_dir}
+  tar xvf ${mzml_tar} --strip-components 1
+  mv *.gz \${output_dir}
   head -n 1 \$filename | while read -r sample experiment wxs_file_name wxs_file_uuid mzml_files mzml_links maf_file
   do 
-    IFS=';' read -r -a allUrls <<< "\$mzml_links"
     IFS=';' read -r -a allNames <<< "\$mzml_files"
-    for index in "\${!allUrls[@]}"
+    for index in "\${!allNames[@]}"
     do
-      eachUrl="\${allUrls[\$index]}"
       eachName="\${allNames[\$index]}"
-      echo "Downloading \$eachUrl........."
-      wget -c "\$eachUrl" -O \${output_dir}/\${eachName} # -c allows resuming the failed or stopped downloads
       gunzip \${output_dir}/\${eachName}
       msmsName=\${output_dir}/\${eachName}
       msmsName=\${msmsName/.gz/}
@@ -90,7 +113,7 @@ process extract_mzml_path {
         -tda 0 \
         -o \${msmsName}.mzid \
         -conf ${msms_para_file}
-    done   # -c also eliminates redownload if a file already exists (with same size) in the current directory.
+    done   
   done 
   """
 }
@@ -277,14 +300,16 @@ workflow msms_search {
   main:
     extract_exp_info(params.manifest)
     set_exp_info(extract_exp_info.out.exp_ch.flatten())
-    combined_ch = set_exp_info.out.res_ch.combine(search_db_ch, by:0)
-    extract_mzml_path(combined_ch, params.search_para_file)
-    ch_1 = extract_mzml_path.out.mzid_ch
+    extract_s3_path(set_exp_info.out.res_ch)
+    combined_ch_1 = set_exp_info.out.res_ch.combine(extract_s3_path.out.s3_ch, by:0)
+    combined_ch = combined_ch_1.combine(search_db_ch, by:0)
+    peptide_identification(combined_ch, params.search_para_file)
+    ch_1 = peptide_identification.out.mzid_ch
     fdr_ch = ch_1.combine(search_db_ch, by:0)
     calculate_fdr(fdr_ch)
     prepare_pepquery_input(calculate_fdr.out.pga_result_folder)
 
-    mzml_ch = extract_mzml_path.out.mzml_ch
+    mzml_ch = peptide_identification.out.mzml_ch
     pepquery_in_1 = mzml_ch.combine(ref_ch, by:0)
     novel_peptide_ch = prepare_pepquery_input.out.novel_peptide_tsv
     pepquery_in = pepquery_in_1.combine(novel_peptide_ch, by:0)

@@ -94,7 +94,8 @@ process pre_processing {
       # for now the file type is "somatic"
       # change sample name pattern "-" --> "."
       vcf_file_name <- gsub("-", ".", dat[["sample"]])
-      vcf_file_name <- paste0(f, "_", vcf_file_name, ".avinput")
+      vcf_file_name <- gsub(paste0(f,"_"), "", vcf_file_name)
+      vcf_file_name <- paste0(vcf_file_name, ".avinput")
       vcf_file_path <- paste0("avinputs/", vcf_file_name)
       dat <- dat %>%  
             select(experiment, sample) %>%
@@ -236,7 +237,7 @@ process database_construct {
     cd ${output_dir}
     mkdir sample_varinfo
     mkdir experiment_varinfo
-    mv ${exp_name}_*-varInfo.txt experiment_varinfo
+    mv ${exp_name}_anno-varInfo.txt experiment_varinfo
     mv *-varInfo.txt sample_varinfo
     """
 }
