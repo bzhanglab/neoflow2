@@ -64,7 +64,6 @@ workflow {
      database_construction.out.ref_ch
    )
    neo_antigen(
-     download_mzml.out.manifest_new,
      hla_typing.out.hla_typing_out,
      database_construction.out.sample_varinfo_ch,
      database_construction.out.var_db_ch,

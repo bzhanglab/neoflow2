@@ -215,7 +215,6 @@ process add_variant_pep_evidence {
 
 workflow neo_antigen {
   take:
-     manifest_new
      hla_type
      var_info
      var_db
@@ -231,7 +230,7 @@ workflow neo_antigen {
             .set{var_info_new}
 
     sample_exp_mapping = []
-    csvFile = file(manifest_new)
+    csvFile = file(params.manifest)
     allLines  = csvFile.readLines()
     number = 0
     for( line : allLines ) {
