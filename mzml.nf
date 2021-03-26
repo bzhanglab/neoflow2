@@ -51,19 +51,20 @@ process download_mzml_files {
   memory '60 GB'
   publishDir "${params.mzml_s3_prefix}",
               mode: 'copy',
-              pattern: '*.gz',
+              pattern: '*.tar',
               overwrite: true
 
   input:
     tuple val(experiment), path('exp_info.txt')
   
   output:
-    path("*.gz")
+    path "*.tar", emit: tar_ch
+    path "OK", emit: ok_ch
 
   """
   filename="exp_info.txt"
-  # output_dir="exp_${experiment}"
-  # mkdir -p \${output_dir}
+  output_dir="exp_${experiment}"
+  mkdir -p \${output_dir}
   head -n 1 \$filename | while read -r sample experiment wxs_file_name wxs_file_uuid mzml_files mzml_links maf_file
   do 
     IFS=';' read -r -a allUrls <<< "\$mzml_links"
@@ -77,13 +78,51 @@ process download_mzml_files {
       sleep 5
     done   # -c also eliminates redownload if a file already exists (with same size) in the current directory.
   done 
+  mv *.gz \${output_dir}
+  tar cvf ${experiment}.tar \${output_dir}
+  echo "OK" > OK
   """
 }
 
 
-workflow mzml {
+process update_manifest_file {
+  label 'r5_2xlarge'
+  container "${params.container.r_tidyverse}"
+  cpus 8
+  memory '60 GB'
+
+  input:
+    path('manifest.txt')
+    path('OK')
+
+  
+  output:
+    path "manifest_new.txt", emit: manifest_ch
+
+  """
+  #!/usr/bin/env python
+  import pandas as pd
+
+  # must start with s3, end with '/'
+  s3_prefix = '${params.mzml_s3_prefix}'
+
+  df = pd.read_csv('manifest.txt', sep='\t')
+  for index, row in df.iterrows():
+      exp_name = row['experiment']
+      row['mzml_links'] = s3_prefix + exp_name + '.tar'
+
+  df.to_csv('manifest_new.txt', sep='\t', index=False)
+  """
+}
+
+
+workflow download_mzml {
   main:
     extract_exp_info(params.manifest)
     set_exp_info(extract_exp_info.out.exp_ch.flatten())
     download_mzml_files(set_exp_info.out.res_ch)
+    update_manifest_file(params.manifest, download_mzml_files.out.ok_ch.collect())
+  
+  emit:
+    manifest_new = update_manifest_file.out.manifest_ch 
 }

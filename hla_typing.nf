@@ -196,8 +196,11 @@ process run_optitype {
 
 
 workflow hla_typing {
+    take:
+      manifest_new
+
     main:
-      generate_id_files(params.manifest, params.start, params.end)
+      generate_id_files(manifest_new, params.start, params.end)
       get_sample_id(generate_id_files.out.flatten())
       download_files(params.gdc_token, get_sample_id.out.res_ch)
       bam_to_fastq(download_files.out.res_ch)

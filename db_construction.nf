@@ -404,6 +404,9 @@ process generate_decoy_db{
 
 
 workflow database_construction {
+  take:
+    manifest_new
+
   main:
     prepare_annovar(
       params.annovar_file,
@@ -411,7 +414,7 @@ workflow database_construction {
     )
     stage_fusion_files(params.fusion_file)
     process_maf(prepare_annovar.out.annovar_ch, params.maf)
-    pre_processing(params.manifest, params.start, params.end)
+    pre_processing(manifest_new, params.start, params.end)
     get_exp_name(pre_processing.out.res_ch.flatten())
     get_exp_fusion(pre_processing.out.res_fusion_ch.flatten())
     variant_annotation(
@@ -433,7 +436,7 @@ workflow database_construction {
     add_fusion_info(
       fusion_ch_in, stage_fusion_files.out.fusion_out_ch
     ) 
-    split_exp_varinfo(params.manifest, 
+    split_exp_varinfo(manifest_new, 
       add_fusion_info.out.exp_varinfo
     )
     format_db(

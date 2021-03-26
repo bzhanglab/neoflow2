@@ -294,11 +294,12 @@ process add_pepquery_validation {
 
 workflow msms_search {
   take:
+     manifest_new
      search_db_ch
      ref_ch
 
   main:
-    extract_exp_info(params.manifest)
+    extract_exp_info(manifest_new)
     set_exp_info(extract_exp_info.out.exp_ch.flatten())
     extract_s3_path(set_exp_info.out.res_ch)
     combined_ch_1 = set_exp_info.out.res_ch.combine(extract_s3_path.out.s3_ch, by:0)
