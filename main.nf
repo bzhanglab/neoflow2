@@ -57,7 +57,7 @@ workflow {
   // then the manifest file will be updated with the new s3 URI
   download_mzml()
   hla_typing(download_mzml.out.manifest_new)
-  database_construction(mzml.out.manifest_new)
+  database_construction(download_mzml.out.manifest_new)
   msms_search(
      download_mzml.out.manifest_new,
      database_construction.out.search_db_ch,
