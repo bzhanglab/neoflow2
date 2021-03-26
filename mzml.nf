@@ -87,7 +87,7 @@ process download_mzml_files {
 
 process update_manifest_file {
   label 'r5_2xlarge'
-  container "${params.container.r_tidyverse}"
+  container "${params.container.python}"
   cpus 8
   memory '60 GB'
 
