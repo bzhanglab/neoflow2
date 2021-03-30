@@ -49,28 +49,80 @@ include { msms_search } from './msms'
 include { neo_antigen } from './neoantigen'
 
 
+def check_input_files() {
+   log.info 'checking input files....'
+   manifest_file = file("${params.manifest}")
+   if (!manifest_file.isFile()) {
+     log.info 'manifest file not exist'
+     return false
+   }
+   fusion_tgz = file("${params.fusion_file}")
+   if (!fusion_tgz.isFile()) {
+     log.info 'fusion tgz file not exist'
+     return false
+   }
+   fusion_tgz.copyTo('./fusion_file.tgz')
+   myDir = file('./fusion')
+   result = myDir.mkdir()
+   cmd = 'tar xvfz fusion_file.tgz -C ./fusion --strip-components=1'
+   def proc = cmd.execute()
+   proc.waitForOrKill(5000)
+
+   count = 0
+   allLines  = manifest_file.readLines()
+   status = true
+   for( line : allLines ) {
+      count = count + 1
+      if (count == 1) continue
+      String[] str
+      str = line.split('\t')
+      fusion_path = str[6]
+      cur_file = file(fusion_path)
+      if (!cur_file.isFile()) {
+         log.error "${fusion_path} does not exist"
+         if (status) {
+           status = false
+         }
+      }
+    }
+
+   // clean up
+   cmd = '/bin/rm -rf ./fusion ./fusion_file.tgz'
+   cmd.execute()
+   log.info 'file checking done...'
+   return status
+}
+
+
+workflow neoflow2_sub {
+    // mzml source is from PDC,
+    // first thing to do is download the data to s3,
+    // then the manifest file will be updated with the new s3 URI
+    download_mzml()
+    hla_typing(download_mzml.out.manifest_new)
+    database_construction(download_mzml.out.manifest_new)
+    msms_search(
+      download_mzml.out.manifest_new,
+      database_construction.out.search_db_ch,
+      database_construction.out.ref_ch
+    )
+    neo_antigen(
+      hla_typing.out.hla_typing_out,
+      database_construction.out.sample_varinfo_ch,
+      database_construction.out.var_db_ch,
+      database_construction.out.ref_ch,
+      database_construction.out.var_pep_info,
+      msms_search.out.var_pep_file
+    )
+}
+
+
 // ====== main workflow ===========
 workflow {
   log.info neoflowHeader()
-  // mzml source is from PDC,
-  // first thing to do is download the data to s3,
-  // then the manifest file will be updated with the new s3 URI
-  download_mzml()
-  hla_typing(download_mzml.out.manifest_new)
-  database_construction(download_mzml.out.manifest_new)
-  msms_search(
-     download_mzml.out.manifest_new,
-     database_construction.out.search_db_ch,
-     database_construction.out.ref_ch
-   )
-   neo_antigen(
-     hla_typing.out.hla_typing_out,
-     database_construction.out.sample_varinfo_ch,
-     database_construction.out.var_db_ch,
-     database_construction.out.ref_ch,
-     database_construction.out.var_pep_info,
-     msms_search.out.var_pep_file
-   )
+  if (check_input_files()) {
+     neoflow2_sub()
+  } 
 }
 
 
