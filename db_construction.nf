@@ -92,8 +92,7 @@ process pre_processing {
     for(f in experiment_names){
       dat <- a %>% filter(experiment == f) 
       # for now the file type is "somatic"
-      # change sample name pattern "-" --> "."
-      vcf_file_name <- gsub("-", ".", dat[["sample"]])
+      vcf_file_name <-  dat[["sample"]]
       vcf_file_name <- gsub(paste0(f,"_"), "", vcf_file_name)
       vcf_file_name <- paste0(vcf_file_name, ".avinput")
       vcf_file_path <- paste0("avinputs/", vcf_file_name)
