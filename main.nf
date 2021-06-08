@@ -4,8 +4,10 @@ nextflow.enable.dsl = 2
 
 assert params.run_version
 assert params.manifest
-assert params.maf
-assert params.fusion_file
+if(!params.hlatyping) {
+  assert params.maf
+  assert params.fusion_file
+}
 // the first step is to download the mzml files to s3 
 // this is where downloaded files will be stored first 
 assert params.mzml_s3_prefix
@@ -26,6 +28,15 @@ def helpMessage() {
     Mandatory arguments:
       -profile                      Configuration profile to use.
                                     Available: docker, awsbatch.
+      --run_version
+      --manifest
+      --mzml_s3_prefix
+
+    Optional arguments:
+      --maf
+      --fusion_file 
+      --database
+      --hlaptyping
     """.stripIndent()
 }
 
@@ -50,6 +61,9 @@ include { neo_antigen } from './neoantigen'
 
 
 def check_input_files() {
+   if (params.hlatyping) {
+     return true
+   }
    log.info 'checking input files....'
    manifest_file = file("${params.manifest}")
    if (!manifest_file.isFile()) {
@@ -95,25 +109,97 @@ def check_input_files() {
 
 
 workflow neoflow2_sub {
-    // mzml source is from PDC,
-    // first thing to do is download the data to s3,
-    // then the manifest file will be updated with the new s3 URI
-    download_mzml()
+  exp_sample_mapping = [:]
+  exp_names = []
+  sample_names = []
+  
+  csvFile = file(params.manifest)
+  allLines  = csvFile.readLines()
+  number = 0
+  for( line : allLines ) {
+    number++
+    if (number == 1) continue
+    def parts = line.split("\t")
+    if (exp_sample_mapping.containsKey(parts[1])){
+       exp_sample_mapping[parts[1]].add(parts[0])
+    } else{
+       exp_sample_mapping[parts[1]] = [parts[0]]
+    }
+    exp_names.add(parts[1])
+    sample_names.add(parts[0])
+  }
+  sample_names = sample_names.unique().toSorted()
+  exp_names = exp_names.unique().toSorted()
+
+  // mzml source is from PDC,
+  // first thing to do is download the data to s3,
+  // then the manifest file will be updated with the new s3 URI
+  download_mzml()
+  if (!params.hlatyping) {
     hla_typing(download_mzml.out.manifest_new)
+    hla_typing_out_ch = hla_typing.out.hla_typing_out
+  } else {
+    // create hlatyping related channel if use provides hla typing results
+    hlatyping_input = params.hlatyping.replaceAll(/\/$/,"")
+    hlatyping_ch_lst = []
+    sample_names.each{
+      sample_name -> 
+      hlatyping_ch_lst.add(["${sample_name}", 
+        "${hlatyping_input}/optitype_results/${sample_name}/${sample_name}_result.tsv"])
+    }
+    hla_typing_out_ch = Channel.fromList(hlatyping_ch_lst)
+  }
+  if (!params.database) {
     database_construction(download_mzml.out.manifest_new)
-    msms_search(
-      download_mzml.out.manifest_new,
-      database_construction.out.search_db_ch,
-      database_construction.out.ref_ch
-    )
-    neo_antigen(
-      hla_typing.out.hla_typing_out,
-      database_construction.out.sample_varinfo_ch,
-      database_construction.out.var_db_ch,
-      database_construction.out.ref_ch,
-      database_construction.out.var_pep_info,
-      msms_search.out.var_pep_file
-    )
+    search_db_ch = database_construction.out.search_db_ch
+    ref_ch = database_construction.out.ref_ch
+    sample_varinfo_ch = database_construction.out.sample_varinfo_ch
+    var_db_ch = database_construction.out.var_db_ch
+    var_pep_info_ch = database_construction.out.var_pep_info
+  } else {
+    database_input = params.database.replaceAll(/\/$/,"")
+    search_db_ch_lst = []
+    exp_names.each{
+      exp_name -> 
+      search_db_ch_lst.add(["${exp_name}", 
+        "${database_input}/exp_${exp_name}/${exp_name}_target_decoy.fasta"])
+    }
+    search_db_ch = Channel.fromList(search_db_ch_lst)
+
+    ref_lst = []
+    exp_names.each{
+      exp_name -> 
+      ref_lst.add(["${exp_name}", 
+        "${database_input}/exp_${exp_name}/ref.fasta"])
+    }
+    ref_ch = Channel.fromList(ref_lst)
+    
+    sample_varinfo_lst = []
+    exp_names.each{
+      exp_name -> 
+      tmp_lst = []
+      exp_sample_mapping[exp_name].each{
+        sample_name -> 
+        tmp_lst.add("${database_input}/exp_${exp_name}/sample_varinfo/${sample_name}-new-varInfo.txt")
+      }
+      sample_varinfo_lst.add(["${exp_name}", tmp_lst])
+    }
+    sample_varinfo_ch = Channel.fromList(sample_varinfo_lst)
+  }
+
+  msms_search(
+    download_mzml.out.manifest_new,
+    search_db_ch,
+    ref_ch
+  )
+  neo_antigen(
+    hla_typing_out_ch,
+    sample_varinfo_ch,
+    var_db_ch,
+    ref_ch,
+    var_pep_info_ch,
+    msms_search.out.var_pep_file
+  )
 }
 
 
