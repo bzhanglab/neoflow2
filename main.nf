@@ -185,6 +185,20 @@ workflow neoflow2_sub {
       sample_varinfo_lst.add(["${exp_name}", tmp_lst])
     }
     sample_varinfo_ch = Channel.fromList(sample_varinfo_lst)
+    var_db_ch_lst = []
+    exp_names.each{
+      exp_name -> 
+      var_db_ch_lst.add(["${exp_name}", 
+        "${database_input}/exp_${exp_name}/${exp_name}-anno_varInfor_with_fusion.fasta"])
+    }
+    var_db_ch = Channel.fromList(var_db_ch_lst)
+    var_pep_info_lst = []
+    exp_names.each{
+      exp_name -> 
+      var_pep_info_lst.add(["${exp_name}", 
+         "${database_input}/exp_${exp_name}/experiment_varinfo/${exp_name}-anno_varInfor_with_fusion.txt"])
+    }
+    var_pep_info_ch = Channel.fromList(var_pep_info_lst)
   }
 
   msms_search(
