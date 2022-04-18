@@ -65,7 +65,7 @@ process download_mzml_files {
   filename="exp_info.txt"
   output_dir="exp_${experiment}"
   mkdir -p \${output_dir}
-  head -n 1 \$filename | while read -r sample experiment wxs_file_name wxs_file_uuid mzml_files mzml_links maf_file
+  head -n 1 \$filename | while read -r sample experiment wxs_file_name wxs_file_location mzml_files mzml_links fusion 
   do 
     IFS=';' read -r -a allUrls <<< "\$mzml_links"
     IFS=';' read -r -a allNames <<< "\$mzml_files"
@@ -74,7 +74,9 @@ process download_mzml_files {
       eachUrl="\${allUrls[\$index]}"
       eachName="\${allNames[\$index]}"
       echo "Downloading \$eachUrl........."
-      wget -c "\$eachUrl" -O \${eachName} # -c allows resuming the failed or stopped downloads
+      # wget -c "\$eachUrl" -O \${eachName} # -c allows resuming the failed or stopped downloads
+      curl --connect-timeout 5  --max-time 10 --retry 5  --retry-delay 0 --retry-max-time 40 \
+        --output \${eachName} \$eachUrl
       sleep 5
     done   # -c also eliminates redownload if a file already exists (with same size) in the current directory.
   done 

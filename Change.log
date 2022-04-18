@@ -1,0 +1,6 @@
+* mapping table:
+  wxs_file_uuid --> wxs_file_location (can be either uuid or url)
+ 
+* two parameters:
+  * bam_source:  uuid or url
+  * bam_type: bam or cram

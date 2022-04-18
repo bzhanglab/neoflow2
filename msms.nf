@@ -97,7 +97,7 @@ process peptide_identification {
   mkdir -p \${output_dir}
   tar xvf ${mzml_tar} --strip-components 1
   mv *.gz \${output_dir}
-  head -n 1 \$filename | while read -r sample experiment wxs_file_name wxs_file_uuid mzml_files mzml_links maf_file
+  head -n 1 \$filename | while read -r sample experiment wxs_file_name wxs_file_location mzml_files mzml_links fusion
   do 
     IFS=';' read -r -a allNames <<< "\$mzml_files"
     for index in "\${!allNames[@]}"
