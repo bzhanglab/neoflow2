@@ -66,7 +66,7 @@ process get_sample_id {
 }
 
 
-process download_files {
+process download_files_uuid {
   container "${params.container.gdc_client}"
   label 'r5_2xlarge'
   cpus 8
@@ -74,7 +74,7 @@ process download_files {
 
   input:
     path(token)
-    tuple val(sample_id), val(uuid)
+    tuple val(sample_id), val(location)
 
  output:
    tuple val(sample_id),
@@ -82,10 +82,62 @@ process download_files {
          emit: res_ch
 
   """
-  gdc-client download "${uuid}" -t "${token}" -n ${task.cpus}
-  mv "${uuid}" bam
+    gdc-client download "${location}" -t "${token}" -n ${task.cpus}
+    mv "${location}" bam
   """
 }
+
+
+process download_files_url_bam {
+  container "${params.container.ubuntu}"
+  label 'r5_2xlarge'
+  cpus 8
+  memory '60 GB'
+
+  input:
+    tuple val(sample_id), val(location)
+
+ output:
+   tuple val(sample_id),
+         path('bam/*.bam'),
+         emit: res_ch
+
+  """
+    mkdir bam
+    cd bam
+    curl --connect-timeout 5 \
+    --max-time 10 --retry 5 \
+    --retry-delay 0 --retry-max-time 40 \
+    \${location} --output \${sample_id}.bam
+  """  
+}
+
+
+// cram crai
+process download_files_url_cram {
+  container "${params.container.ubuntu}"
+  label 'r5_2xlarge'
+  cpus 8
+  memory '60 GB'
+
+  input:
+    tuple val(sample_id), val(location)
+
+ output:
+   tuple val(sample_id),
+         path('bam/*.cram'),
+         emit: res_ch
+
+  """
+    mkdir bam
+    cd bam
+    curl --connect-timeout 5 \
+    --max-time 10 --retry 5 \
+    --retry-delay 0 --retry-max-time 40 \
+    \${location} --output \${sample_id}.cram
+  """  
+}
+
 
 
 process bam_to_fastq {
@@ -107,6 +159,28 @@ process bam_to_fastq {
 
   """
   samtools fastq  -@ ${task.cpus} -1 r1.fastq -2 r2.fastq wxs.bam
+  """
+}
+
+
+process cram_to_fastq {
+  label 'r5_2xlarge_500g'
+  container  "${params.container.samtools}"
+  cpus 8
+  memory '60 GB'
+
+  input:
+    tuple val(sample_id),
+          path('wxs.cram')
+
+  output:
+    tuple val(sample_id), 
+          path('r*{1,2}.fastq'),
+          emit: res_ch
+
+
+  """
+  samtools fastq  -@ ${task.cpus} -1 r1.fastq -2 r2.fastq wxs.cram
   """
 
 }
@@ -202,10 +276,21 @@ workflow hla_typing {
     main:
       generate_id_files(manifest_new, params.start, params.end)
       get_sample_id(generate_id_files.out.flatten())
-      download_files(params.gdc_token, get_sample_id.out.res_ch)
-      bam_to_fastq(download_files.out.res_ch)
+      if (params.bam_source == 'uuid') {
+         download_files_uuid(params.gdc_token, get_sample_id.out.res_ch)
+         fastq_out = bam_to_fastq(download_files_uuid.out.res_ch)
+      } else { 
+        if (params.bam_type == 'bam') {   // url + bam
+          download_files_url_bam(get_sample_id.out.res_ch)
+          fastq_out = bam_to_fastq(download_files_url_bam.out.res_ch)
+        }
+        else {  // url + cram
+          download_files_url_cram(get_sample_id.out.res_ch)
+          fastq_out = cram_to_fastq(download_files_url_cram.out.res_ch)
+        }
+      }
       reads_mapping(
-        bam_to_fastq.out.res_ch,
+        fastq_out.res_ch,
         params.hla_ref_prefix,
         Channel.fromPath(params.hla_ref).collect()
       )

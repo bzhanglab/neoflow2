@@ -3,7 +3,10 @@
 nextflow.enable.dsl = 2
 
 assert params.run_version
-assert params.manifest
+assert params.manifest  
+assert params.bam_source  // 'uuid' or 'url'
+assert params.bam_type   // 'bam' or 'cram'
+
 if(!params.hlatyping) {
   assert params.maf
   assert params.fusion_file
@@ -131,7 +134,8 @@ workflow neoflow2_sub {
   sample_names = sample_names.unique().toSorted()
   exp_names = exp_names.unique().toSorted()
 
-  // mzml source is from PDC,
+  // mzml source is from PDC or AWS S3 
+  // the provided are urls for the files
   // first thing to do is download the data to s3,
   // then the manifest file will be updated with the new s3 URI
   download_mzml()
