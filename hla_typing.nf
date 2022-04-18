@@ -89,7 +89,7 @@ process download_files_uuid {
 
 
 process download_files_url_bam {
-  container "${params.container.ubuntu}"
+  container "${params.container.neoflow}"
   label 'r5_2xlarge'
   cpus 8
   memory '60 GB'
