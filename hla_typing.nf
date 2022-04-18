@@ -54,15 +54,16 @@ process get_sample_id {
     path(id_file)
   
   output:
-    tuple env(sample_id), env(uuid), emit: res_ch
+    tuple env(sample_id), path("location.txt"), emit: res_ch
 
    """
    while IFS=\$'\\t' read -r -a myid
    do
       sample_id="\${myid[0]}"
-      uuid="\${myid[3]}" 
+      location="\${myid[3]}" 
    done < "${id_file}"
-   uuid=\$(echo "\${uuid}" | sed -e 's/?/\\\\?/g' -e 's/=/\\\\=/g' -e 's/&/\\\\&/g' -e 's/%/\\\\%/g')
+   echo \${location} > location.txt
+   # uuid=\$(echo "\${uuid}" | sed -e 's/?/\\\\?/g' -e 's/=/\\\\=/g' -e 's/&/\\\\&/g' -e 's/%/\\\\%/g')
    """
 }
 
@@ -75,7 +76,7 @@ process download_files_uuid {
 
   input:
     path(token)
-    tuple val(sample_id), val(location)
+    tuple val(sample_id), path(uuid_file)
 
  output:
    tuple val(sample_id),
@@ -83,8 +84,9 @@ process download_files_uuid {
          emit: res_ch
 
   """
-    gdc-client download "${location}" -t "${token}" -n ${task.cpus}
-    mv "${location}" bam
+    uuid=`cat ${uuid_file}`
+    gdc-client download "\${uuid}" -t "${token}" -n ${task.cpus}
+    mv "\${uuid}" bam
   """
 }
 
@@ -96,7 +98,7 @@ process download_files_url_bam {
   memory '60 GB'
 
   input:
-    tuple val(sample_id), val(location)
+    tuple val(sample_id), path(url_file)
 
  output:
    tuple val(sample_id),
@@ -106,10 +108,11 @@ process download_files_url_bam {
   """
     mkdir bam
     cd bam
+    url=`cat ${url_file}`
     curl --connect-timeout 5 \
     --max-time 10 --retry 5 \
     --retry-delay 0 --retry-max-time 40 \
-    ${location} --output ${sample_id}.bam
+    \"\${url}\" --output ${sample_id}.bam
   """  
 }
 
@@ -122,7 +125,7 @@ process download_files_url_cram {
   memory '60 GB'
 
   input:
-    tuple val(sample_id), val(location)
+    tuple val(sample_id), path(url_file)
 
  output:
    tuple val(sample_id),
@@ -132,10 +135,11 @@ process download_files_url_cram {
   """
     mkdir bam
     cd bam
+    url=`cat ${url_file}`
     curl --connect-timeout 5 \
     --max-time 10 --retry 5 \
     --retry-delay 0 --retry-max-time 40 \
-    ${location} --output ${sample_id}.cram
+    \"\${url}\" --output ${sample_id}.cram
   """  
 }
 
