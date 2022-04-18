@@ -108,7 +108,7 @@ process download_files_url_bam {
     curl --connect-timeout 5 \
     --max-time 10 --retry 5 \
     --retry-delay 0 --retry-max-time 40 \
-    \${location} --output \${sample_id}.bam
+    ${location} --output ${sample_id}.bam
   """  
 }
 
@@ -134,7 +134,7 @@ process download_files_url_cram {
     curl --connect-timeout 5 \
     --max-time 10 --retry 5 \
     --retry-delay 0 --retry-max-time 40 \
-    \${location} --output \${sample_id}.cram
+    ${location} --output ${sample_id}.cram
   """  
 }
 
