@@ -62,6 +62,7 @@ process get_sample_id {
       sample_id="\${myid[0]}"
       uuid="\${myid[3]}" 
    done < "${id_file}"
+   uuid=$(echo "\${uuid}" | sed -e 's/?/\\\\?/g' -e 's/=/\\\\=/g' -e 's/&/\\\\&/g' -e 's/%/\\\\%/g')
    """
 }
 
