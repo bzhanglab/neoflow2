@@ -109,9 +109,8 @@ process download_files_url_bam {
     mkdir bam
     cd bam
     url=`cat ../${url_file}`
-    curl --connect-timeout 5 \
-    --max-time 10 --retry 5 \
-    --retry-delay 0 --retry-max-time 40 \
+    curl  --retry 5 \
+    --retry-delay 0 --retry-max-time 0 \
     \"\${url}\" --output ${sample_id}.bam
   """  
 }
@@ -136,9 +135,8 @@ process download_files_url_cram {
     mkdir bam
     cd bam
     url=`cat ../${url_file}`
-    curl --connect-timeout 5 \
-    --max-time 10 --retry 5 \
-    --retry-delay 0 --retry-max-time 40 \
+    curl --retry 5 \
+    --retry-delay 0 --retry-max-time 0 \
     \"\${url}\" --output ${sample_id}.cram
   """  
 }
