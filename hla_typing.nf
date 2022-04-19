@@ -110,7 +110,7 @@ process download_files_url_bam {
     cd bam
     url=`cat ../${url_file}`
     curl  --retry 5 \
-    --retry-delay 0 --retry-max-time 0 \
+    --retry-delay 5 --retry-max-time 0 \
     \"\${url}\" --output ${sample_id}.bam
   """  
 }
@@ -136,7 +136,7 @@ process download_files_url_cram {
     cd bam
     url=`cat ../${url_file}`
     curl --retry 5 \
-    --retry-delay 0 --retry-max-time 0 \
+    --retry-delay 5 --retry-max-time 0 \
     \"\${url}\" --output ${sample_id}.cram
   """  
 }

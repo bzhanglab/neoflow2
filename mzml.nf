@@ -75,7 +75,7 @@ process download_mzml_files {
       eachName="\${allNames[\$index]}"
       echo "Downloading \$eachUrl........."
       # wget -c "\$eachUrl" -O \${eachName} # -c allows resuming the failed or stopped downloads
-      curl --connect-timeout 5  --max-time 10 --retry 5  --retry-delay 0 --retry-max-time 40 \
+      curl --retry 5 --retry-delay 5 --retry-max-time 0 \
         --output \${eachName} \$eachUrl
       sleep 5
     done   # -c also eliminates redownload if a file already exists (with same size) in the current directory.
