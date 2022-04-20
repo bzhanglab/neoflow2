@@ -238,14 +238,11 @@ process run_samtools{
 
 
 process run_optitype {
-  label 'r5_4xlarge_500g'
   container  "${params.container.optitype}"
   publishDir "${params.outdir_run}/hla_type/", 
               pattern: "optitype_results/${sample_id}",
               mode: 'copy', 
               overwrite: true
-  cpus 16
-  memory '120 GB'
   input:
       tuple val(sample_id), path('*')
 
