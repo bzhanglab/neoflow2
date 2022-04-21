@@ -225,9 +225,11 @@ process run_samtools{
 
   script:
     """
-    samtools view -@ ${task.cpus} -bS mapped_1.sam > mapped_1.bam
+    # samtools view -@ ${task.cpus} -bS mapped_1.sam > mapped_1.bam
+    samtools view -@ ${task.cpus} -h -F 4 -b1 mapped_1.sam > mapped_1.bam
     rm -rf mapped_1.sam
-    samtools view -@ ${task.cpus} -bS mapped_2.sam > mapped_2.bam
+    # samtools view -@ ${task.cpus} -bS mapped_2.sam > mapped_2.bam
+    samtools view -@ ${task.cpus} -h -F 4 -b1 mapped_2.sam > mapped_2.bam
     rm -rf mapped_2.sam
     samtools fastq -@ ${task.cpus} mapped_1.bam > mapped_1.fastq
     rm -rf mapped_1.bam
@@ -238,11 +240,15 @@ process run_samtools{
 
 
 process run_optitype {
+  label 'r5_2xlarge'
   container  "${params.container.optitype}"
   publishDir "${params.outdir_run}/hla_type/", 
               pattern: "optitype_results/${sample_id}",
               mode: 'copy', 
               overwrite: true
+  cpus 8
+  memory '60 GB'
+
   input:
       tuple val(sample_id), path('*')
 
