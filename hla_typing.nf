@@ -143,7 +143,7 @@ process download_files_url_cram {
 
 
 process bam_to_fastq {
-  label 'r5_2xlarge_1000g'
+  label 'r5_2xlarge'
   container  "${params.container.samtools}"
   cpus 8
   memory '60 GB'
@@ -155,18 +155,18 @@ process bam_to_fastq {
 
   output:
     tuple val(sample_id), 
-          path('r*{1,2}.fastq'),
+          path('r*{1,2}.fastq.gz'),
           emit: res_ch
 
 
   """
-  samtools fastq  -@ ${task.cpus} -1 r1.fastq -2 r2.fastq wxs.bam
+  samtools fastq  -@ ${task.cpus} -1 r1.fastq.gz -2 r2.fastq.gz wxs.bam
   """
 }
 
 
 process cram_to_fastq {
-  label 'r5_2xlarge_1000g'
+  label 'r5_2xlarge'
   container  "${params.container.samtools}"
   cpus 8
   memory '60 GB'
@@ -177,12 +177,12 @@ process cram_to_fastq {
 
   output:
     tuple val(sample_id), 
-          path('r*{1,2}.fastq'),
+          path('r*{1,2}.fastq.gz'),
           emit: res_ch
 
 
   """
-  samtools fastq  -@ ${task.cpus} -1 r1.fastq -2 r2.fastq wxs.cram
+  samtools fastq  -@ ${task.cpus} -1 r1.fastq.gz -2 r2.fastq.gz wxs.cram
   """
 
 }
