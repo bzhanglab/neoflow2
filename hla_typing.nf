@@ -201,43 +201,21 @@ process reads_mapping {
 
 
   output:
-     tuple val(sample_id), 
-          path('mapped_{1,2}.bam'),
-          emit: res_ch
+     tuple val(sample_id), path('mapped_{1,2}.fastq'), emit: res_ch
 
   script:
     """
     bwa mem -t ${task.cpus} -M ${hla_ref_prefix} r1.fastq.gz | samtools view -@ ${task.cpus} -bS - > mapped_1.bam
     rm -rf r1.fastq.gz
-    bwa mem -t ${task.cpus} -M ${hla_ref_prefix} r2.fastq.gz | samtools view -@ ${task.cpus} -bS - > mapped_2.bam
-    rm -rf r2.fastq.gz
-    """
-}
-
-
-process run_samtools{
-  label 'r5_2xlarge_1000g'
-  container  "${params.container.samtools}"
-  cpus 8
-  memory '60 GB'
-
-  input:
-    path ('*')
-    tuple val(sample_id), path('*') 
-
-  output:
-    tuple val(sample_id), path('mapped_{1,2}.fastq'), emit: res_ch
-
-  script:
-    """
-    # samtools view -@ ${task.cpus} -bS mapped_1.sam > mapped_1.bam
     samtools view -@ ${task.cpus} -h -F 4 -b1 mapped_1.bam > mapped_11.bam
     rm -rf mapped_1.bam
-    # samtools view -@ ${task.cpus} -bS mapped_2.sam > mapped_2.bam
-    samtools view -@ ${task.cpus} -h -F 4 -b1 mapped_2.bam > mapped_22.bam
-    rm -rf mapped_2.bam
     samtools fastq -@ ${task.cpus} mapped_11.bam > mapped_1.fastq
     rm -rf mapped_11.bam
+    
+    bwa mem -t ${task.cpus} -M ${hla_ref_prefix} r2.fastq.gz | samtools view -@ ${task.cpus} -bS - > mapped_2.bam
+    rm -rf r2.fastq.gz
+    samtools view -@ ${task.cpus} -h -F 4 -b1 mapped_2.bam > mapped_22.bam
+    rm -rf mapped_2.bam
     samtools fastq -@ ${task.cpus} mapped_22.bam > mapped_2.fastq
     rm -rf mapped_22.bam
     """
@@ -299,11 +277,7 @@ workflow hla_typing {
         params.hla_ref_prefix,
         Channel.fromPath(params.hla_ref).collect()
       )
-      run_samtools(
-        Channel.fromPath(params.hla_ref).collect(), 
-        reads_mapping.out.res_ch
-      )
-     run_optitype(run_samtools.out.res_ch)
+     run_optitype(reads_mapping.out.res_ch)
 
      emit:
        hla_typing_out = run_optitype.out.res_ch
