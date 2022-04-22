@@ -189,7 +189,7 @@ process cram_to_fastq {
 
 
 process reads_mapping {
-  label 'c5a_8xlarge_1000g'
+  label 'c5a_8xlarge'
   container  "${params.container.bwa}"
   cpus 32
   memory '60 GB'
