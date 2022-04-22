@@ -143,10 +143,10 @@ process download_files_url_cram {
 
 
 process bam_to_fastq {
-  label 'r5_2xlarge'
+  label 'r5_xlarge'
   container  "${params.container.samtools}"
-  cpus 8
-  memory '60 GB'
+  cpus 4
+  memory '30 GB'
 
   input:
     tuple val(sample_id),
@@ -166,10 +166,10 @@ process bam_to_fastq {
 
 
 process cram_to_fastq {
-  label 'r5_2xlarge'
+  label 'r5_xlarge'
   container  "${params.container.samtools}"
-  cpus 8
-  memory '60 GB'
+  cpus 4
+  memory '30 GB'
 
   input:
     tuple val(sample_id),
