@@ -184,10 +184,10 @@ process cram_to_fastq {
 
 
 process reads_mapping {
-  label 'r5_2xlarge_500g'
+  label 'c5_4xlarge_1000g'
   container  "${params.container.bwa}"
-  cpus 8
-  memory '60 GB'
+  cpus 16
+  memory '30 GB'
 
   input:
     tuple val(sample_id), path('*')
