@@ -202,15 +202,15 @@ process reads_mapping {
 
   output:
      tuple val(sample_id), 
-          path('mapped_{1,2}.sam'),
+          path('mapped_{1,2}.bam'),
           emit: res_ch
 
   script:
     """
-    bwa mem -t ${task.cpus} -M ${hla_ref_prefix} r1.fastq > mapped_1.sam
-    rm -rf r1.fastq
-    bwa mem -t ${task.cpus} -M ${hla_ref_prefix} r2.fastq > mapped_2.sam
-    rm -rf r2.fastq
+    bwa mem -t ${task.cpus} -M ${hla_ref_prefix} r1.fastq.gz | samtools view -@ ${task.cpus} -bS - > mapped_1.bam
+    rm -rf r1.fastq.gz
+    bwa mem -t ${task.cpus} -M ${hla_ref_prefix} r2.fastq.gz | samtools view -@ ${task.cpus} -bS - > mapped_2.bam
+    rm -rf r2.fastq.gz
     """
 }
 
@@ -231,15 +231,15 @@ process run_samtools{
   script:
     """
     # samtools view -@ ${task.cpus} -bS mapped_1.sam > mapped_1.bam
-    samtools view -@ ${task.cpus} -h -F 4 -b1 mapped_1.sam > mapped_1.bam
-    rm -rf mapped_1.sam
-    # samtools view -@ ${task.cpus} -bS mapped_2.sam > mapped_2.bam
-    samtools view -@ ${task.cpus} -h -F 4 -b1 mapped_2.sam > mapped_2.bam
-    rm -rf mapped_2.sam
-    samtools fastq -@ ${task.cpus} mapped_1.bam > mapped_1.fastq
+    samtools view -@ ${task.cpus} -h -F 4 -b1 mapped_1.bam > mapped_11.bam
     rm -rf mapped_1.bam
-    samtools fastq -@ ${task.cpus} mapped_2.bam > mapped_2.fastq
+    # samtools view -@ ${task.cpus} -bS mapped_2.sam > mapped_2.bam
+    samtools view -@ ${task.cpus} -h -F 4 -b1 mapped_2.bam > mapped_22.bam
     rm -rf mapped_2.bam
+    samtools fastq -@ ${task.cpus} mapped_11.bam > mapped_1.fastq
+    rm -rf mapped_11.bam
+    samtools fastq -@ ${task.cpus} mapped_22.bam > mapped_2.fastq
+    rm -rf mapped_22.bam
     """
 }
 
