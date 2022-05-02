@@ -25,15 +25,16 @@ process prepare_netmhc {
 }
 
 
+// this step cannot use multi-threading
 process mhc_peptide_binding_prediction {
-  label 'r5_2xlarge'
+  label 'r5a_large'
   container "${params.container.binding_prediction}"
   publishDir "${params.outdir_run}/binding_prediction/",
              mode: 'copy',
              pattern: '*/*',
              overwrite: true
-  cpus 8
-  memory '60 GB'
+  cpus 2
+  memory '12 GB'
 
   input:
     tuple val(sample_name),
