@@ -1,8 +1,8 @@
 process generate_id_files {
-  label 'r5_2xlarge'
   container "${params.container.r_tidyverse}"
-  cpus 8
-  memory '60 GB'
+  cpus 1
+  memory '4 GB'
+  executor 'local'
 
   input:
     path('manifest.txt')
@@ -46,9 +46,9 @@ process generate_id_files {
 
 process get_sample_id {
   container "${params.container.ubuntu}"
-  label 'r5_2xlarge'
-  cpus 8
-  memory '60 GB'
+  cpus 1
+  memory '4 GB'
+  executor 'local'
 
   input:
     path(id_file)
