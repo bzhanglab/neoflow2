@@ -158,7 +158,7 @@ workflow neoflow2_sub {
     hla_typing_out_ch = Channel.fromList(hlatyping_ch_lst)
   }
   if (!params.database) {
-    database_construction(download_mzml.out.manifest_new)
+    database_construction(manifest_ch)
     search_db_ch = database_construction.out.search_db_ch
     ref_ch = database_construction.out.ref_ch
     sample_varinfo_ch = database_construction.out.sample_varinfo_ch
@@ -210,7 +210,7 @@ workflow neoflow2_sub {
   }
 
   msms_search(
-    download_mzml.out.manifest_new,
+    manifest_ch,
     search_db_ch,
     ref_ch
   )
