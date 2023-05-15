@@ -94,6 +94,10 @@ def check_input_files() {
       String[] str
       str = line.split('\t')
       fusion_path = str[6]
+      // only check file ends with ".tsv"
+      if (!fusion_path.endsWith('.tsv')) {
+        continue
+      }
       cur_file = file(fusion_path)
       if (!cur_file.isFile()) {
          log.error "${fusion_path} does not exist"
