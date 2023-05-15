@@ -95,7 +95,7 @@ The input manifest file should contain the following columns:
   * a list of mzml files for each experiment, separated by comma
   * samples in the same experiment has the same `mzml_files` value
 * mzml_path
-  * path to mzml file for each experiment, provided as a gzipped tar file
+  * path to mzml file for each experiment, provided as a tar file
   * samples in the same experiment has the same `mzml_path` value
 * fusion (if fusion information is not available, 'NA' should be used)
   * path to the fusion tsv file for each sample

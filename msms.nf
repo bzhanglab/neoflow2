@@ -95,7 +95,7 @@ process peptide_identification {
   filename="exp_info.txt"
   output_dir="exp_${experiment}"
   mkdir -p \${output_dir}
-  tar -xzvf ${mzml_tar} --strip-components 1
+  tar -xvf ${mzml_tar} --strip-components 1
   mv *.gz \${output_dir}
   head -n 1 \$filename | while read -r sample experiment wxs_file_name wxs_file_location mzml_files mzml_path fusion
   do 
