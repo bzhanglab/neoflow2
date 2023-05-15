@@ -245,8 +245,9 @@ process database_construct {
 process add_fusion_info { 
   label 'r5_2xlarge'
   container "${params.container.variant_annotation}"
-  cpus 8
-  memory '60 GB'
+  cpus 1
+  memory '4 GB'
+  executor 'local'
   publishDir "${params.outdir_run}/customized_database/", 
              mode: 'copy', 
              pattern: 'exp_*/*',

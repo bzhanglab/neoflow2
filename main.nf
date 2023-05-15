@@ -56,7 +56,7 @@ def neoflowHeader() {
     return header.stripIndent()
 }
 
-include { download_mzml } from './mzml'
+// include { download_mzml } from './mzml'
 include { hla_typing } from './hla_typing'
 include { database_construction } from './db_construction'
 include { msms_search } from './msms'
@@ -134,13 +134,13 @@ workflow neoflow2_sub {
   sample_names = sample_names.unique().toSorted()
   exp_names = exp_names.unique().toSorted()
 
-  // mzml source is from PDC or AWS S3 
-  // the provided are urls for the files
-  // first thing to do is download the data to s3,
-  // then the manifest file will be updated with the new s3 URI
-  download_mzml()
+  // requires that the mzml is a path supported in nextflow
+  // for each experiment, the mzml_path is the path to a tar file
+  // for samples in the same experiment, the mzml_path is the same
+  // download_mzml()
+  manifest_ch = Channel.fromPath(params.manifest)
   if (!params.hlatyping) {
-    hla_typing(download_mzml.out.manifest_new)
+    hla_typing(manifest_ch)
     hla_typing_out_ch = hla_typing.out.hla_typing_out
   } else {
     // create hlatyping related channel if use provides hla typing results

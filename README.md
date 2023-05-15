@@ -92,7 +92,7 @@ The input manifest file should contain the following columns:
 * wxs_file_name   
 * wxs_file_location
 * mzml_files
-* mzml_links
+* mzml_path
 * fusion
 
 Here is a [sample manifest file](https://github.com/bzhanglab/neoflow2/blob/main/sample_manifest.txt).

@@ -1,8 +1,8 @@
 process extract_exp_info {
-  label 'r5_2xlarge'
   container "${params.container.r_tidyverse}"
-  cpus 8
-  memory '60 GB'
+  cpus 1
+  memory '4 GB'
+  executor 'local'
 
   input:
     path('manifest.txt')
@@ -25,10 +25,10 @@ process extract_exp_info {
 }
 
 process set_exp_info {
-  label 'r5_2xlarge'
   container "${params.container.ubuntu}"
-  cpus 8
-  memory '60 GB'
+  cpus 1
+  memory '4 GB'
+  executor 'local'
 
   input:
      path(exp_info_file)
@@ -46,9 +46,9 @@ process set_exp_info {
 
 process extract_s3_path {
   container "${params.container.python}"
-  cpus 8
-  memory '60 GB'
-  label 'r5_2xlarge'
+  cpus 1
+  memory '4 GB'
+  executor 'local'
 
   input:
     tuple val(experiment), path('exp_info.txt')
@@ -95,9 +95,9 @@ process peptide_identification {
   filename="exp_info.txt"
   output_dir="exp_${experiment}"
   mkdir -p \${output_dir}
-  tar xvf ${mzml_tar} --strip-components 1
+  tar -xzvf ${mzml_tar} --strip-components 1
   mv *.gz \${output_dir}
-  head -n 1 \$filename | while read -r sample experiment wxs_file_name wxs_file_location mzml_files mzml_links fusion
+  head -n 1 \$filename | while read -r sample experiment wxs_file_name wxs_file_location mzml_files mzml_path fusion
   do 
     IFS=';' read -r -a allNames <<< "\$mzml_files"
     for index in "\${!allNames[@]}"
@@ -156,10 +156,10 @@ process calculate_fdr{
 
 
 process prepare_pepquery_input{
-  label 'r5_2xlarge'
   container "${params.container.pga}"
-  cpus 8
-  memory '60 GB'
+  cpus 1
+  memory '4 GB'
+  executor 'local'
 
   input:
     tuple val(experiment_name),
@@ -247,9 +247,9 @@ process run_pepquery{
 
 
 process add_pepquery_validation {
-  label 'r5_2xlarge'
-  cpus 8
-  memory '60 GB'
+  cpus 1
+  memory '4 GB'
+  executor 'local'
   container "${params.container.pga}"
   publishDir "${params.outdir_run}/novel_peptide_identification/",
               mode: 'copy',
