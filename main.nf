@@ -11,9 +11,6 @@ if(!params.hlatyping) {
   assert params.maf
   assert params.fusion_file
 }
-// the first step is to download the mzml files to s3 
-// this is where downloaded files will be stored first 
-assert params.mzml_s3_prefix
 // these have default values
 assert params.search_engine
 assert params.search_para_file
@@ -33,7 +30,6 @@ def helpMessage() {
                                     Available: docker, awsbatch.
       --run_version
       --manifest
-      --mzml_s3_prefix
 
     Optional arguments:
       --maf

@@ -43,7 +43,6 @@ outdir: "s3://mybucket/myfoler"
 manifest: "/path/to/manifest/file.tsv"
 maf: "/path/to/maf/file"
 fusion_file: "/path/to/tared/gzipped/fusion/file"
-mzml_s3_prefix: "/s3/path/to/store/downloaded/mzml/files"
 bam_source: "uuid"
 bam_type: "bam"
 ```
@@ -57,7 +56,6 @@ The following table lists the parameters and their default values if available.
 | manifest                 | path to input manifest file (see below for more detail)      |
 | maf                      | path to maf file which contains somatic mutations for all the samples included in the manifest file |
 | fusion_file              | path to tared and gzipped fusion file                        |
-| mzml_s3_prefix           | s3 path to store temporarily downloaded mzml file            |
 | bam_source               | `"uuid"` (gdc) or `"url"` (http) or `"path"` (s3, or local file path), Default is `"uuid"`|
 | bam_type                 | `"bam"` or `"cram"`, Default is `"bam"`)                              |
 | database                 | path to database output of previously run for global proteomics (this is used for running phosphoproteomics only) |
