@@ -4,8 +4,8 @@ nextflow.enable.dsl = 2
 
 assert params.run_version
 assert params.manifest  
-assert params.bam_source  // 'uuid' or 'url'
-assert params.bam_type   // 'bam' or 'cram'
+assert params.bam_source == 'uuid' || params.bam_source == 'url' || params.bam_source == 'path' // 'uuid' or 'url' or 'path'
+assert params.bam_type == 'bam' || params.bam_type == 'cram' // 'bam' or 'cram'
 
 if(!params.hlatyping) {
   assert params.maf

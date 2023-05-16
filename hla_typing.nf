@@ -67,6 +67,41 @@ process get_sample_id {
    """
 }
 
+process get_path_string {
+  container "${params.container.ubuntu}"
+  cpus 1
+  memory '4 GB'
+  executor 'local'
+
+  input:
+    tuple val(sample_id), path(path_file)
+  
+  output:
+    tuple val(sample_id), env(path),  emit: res_ch
+
+   """
+   path=\$(cat ${path_file})
+   """
+}
+
+
+process download_files_path {
+  container "${params.container.neoflow}"
+  label 'r5_2xlarge'
+  cpus 8
+  memory '60 GB'
+
+  input:
+    tuple val(sample_id), path(file_path)
+
+ output:
+   tuple val(sample_id), path(file_path), emit: res_ch
+
+  """
+  true
+  """
+}
+
 
 process download_files_uuid {
   container "${params.container.gdc_client}"
@@ -85,7 +120,7 @@ process download_files_uuid {
 
   """
     uuid=`cat ${uuid_file}`
-    gdc-client download "\${uuid}" -t "${token}" -n ${task.cpus}
+    gdc-client download "\${uuid}" -t "${token}" -n ${task.cpus} --retry-amount 5 --wait-time 30
     mv "\${uuid}" bam
   """
 }
@@ -262,7 +297,7 @@ workflow hla_typing {
       if (params.bam_source == 'uuid') {
          download_files_uuid(params.gdc_token, get_sample_id.out.res_ch)
          fastq_out = bam_to_fastq(download_files_uuid.out.res_ch)
-      } else { 
+      } else if (params.bam_source == 'url'){ 
         if (params.bam_type == 'bam') {   // url + bam
           download_files_url_bam(get_sample_id.out.res_ch)
           fastq_out = bam_to_fastq(download_files_url_bam.out.res_ch)
@@ -270,6 +305,14 @@ workflow hla_typing {
         else {  // url + cram
           download_files_url_cram(get_sample_id.out.res_ch)
           fastq_out = cram_to_fastq(download_files_url_cram.out.res_ch)
+        }
+      } else {  // path
+        get_path_string(get_sample_id.out.res_ch)
+        download_files_path(get_path_string.out.res_ch)
+        if (params.bam_type == 'bam') { // path + bam
+          fastq_out = bam_to_fastq(download_files_path.out.res_ch)
+        } else {  // path + cram
+          fastq_out = cram_to_fastq(download_files_path.out.res_ch)
         }
       }
       reads_mapping(
