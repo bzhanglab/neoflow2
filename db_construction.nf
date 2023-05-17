@@ -290,8 +290,7 @@ process split_exp_varinfo {
              pattern: 'exp_*/sample_varinfo/*-new-varInfo.txt',
              overwrite: true 
   input:
-    path 'manifest.txt'
-    tuple val(exp_name), path('*') 
+    tuple path('manifest.txt'), val(exp_name), path('*') 
 
   output:
     tuple val(exp_name),
@@ -436,9 +435,8 @@ workflow database_construction {
     add_fusion_info(
       fusion_ch_in, stage_fusion_files.out.fusion_out_ch
     ) 
-    split_exp_varinfo(manifest_new, 
-      add_fusion_info.out.exp_varinfo
-    )
+    split_exp_varinfo_ch = manifest_new.combine(add_fusion_info.out.exp_varinfo)
+    split_exp_varinfo(split_exp_varinfo_ch)
     format_db(
       add_fusion_info.out.exp_varinfo_fa
     )
