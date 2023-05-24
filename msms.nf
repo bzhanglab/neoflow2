@@ -87,35 +87,104 @@ process peptide_identification {
           path("exp_*/*.mzML"),
           emit: mzml_ch
     tuple val(experiment),
-          path("exp_*/*.mzid"),
+          path("exp_*/*${output_pattern}"),
           emit: mzid_ch
 
-  """
-  # mzml_tar contains all mzml file
-  filename="exp_info.txt"
-  output_dir="exp_${experiment}"
-  mkdir -p \${output_dir}
-  tar -xvf ${mzml_tar} --strip-components 1
-  mv *.gz \${output_dir}
-  head -n 1 \$filename | while read -r sample experiment wxs_file_name wxs_file_location mzml_files mzml_path fusion
-  do 
-    IFS=';' read -r -a allNames <<< "\$mzml_files"
-    for index in "\${!allNames[@]}"
-    do
-      eachName="\${allNames[\$index]}"
-      gunzip \${output_dir}/\${eachName}
-      msmsName=\${output_dir}/\${eachName}
-      msmsName=\${msmsName/.gz/}
-      java -Xmx${params.search_engine_mem}g -jar /opt/MSGFPlus.jar \
-        -thread ${task.cpus}\
-        -s \$msmsName \
-        -d ref.fasta \
-        -tda 0 \
-        -o \${msmsName}.mzid \
-        -conf ${msms_para_file}
-    done   
-  done 
-  """
+  script:
+      if (params.search_engine == 'msgf') {
+          output_pattern = ".mzid"
+          """
+          # mzml_tar contains all mzml file
+          filename="exp_info.txt"
+          output_dir="exp_${experiment}"
+          mkdir -p \${output_dir}
+          tar -xvf ${mzml_tar} --strip-components 1
+          mv *.gz \${output_dir}
+          head -n 1 \$filename | while read -r sample experiment wxs_file_name wxs_file_location mzml_files mzml_path fusion
+          do 
+            IFS=';' read -r -a allNames <<< "\$mzml_files"
+            for index in "\${!allNames[@]}"
+            do
+              eachName="\${allNames[\$index]}"
+              gunzip \${output_dir}/\${eachName}
+              msmsName=\${output_dir}/\${eachName}
+              msmsName=\${msmsName/.gz/}
+              java -Xmx${params.search_engine_mem}g -jar /opt/MSGFPlus.jar \
+                -thread ${task.cpus}\
+                -s \$msmsName \
+                -d ref.fasta \
+                -tda 0 \
+                -o \${msmsName}.mzid \
+                -conf ${msms_para_file}
+            done   
+          done 
+          """
+      } else if (params.search_engine == 'comet'){
+        output_pattern = "_rawResults.txt"
+        """
+          # mzml_tar contains all mzml file
+          filename="exp_info.txt"
+          output_dir="exp_${experiment}"
+          mkdir -p \${output_dir}
+          tar -xvf ${mzml_tar} --strip-components 1
+          mv *.gz \${output_dir}
+          head -n 1 \$filename | while read -r sample experiment wxs_file_name wxs_file_location mzml_files mzml_path fusion
+          do 
+            IFS=';' read -r -a allNames <<< "\$mzml_files"
+            for index in "\${!allNames[@]}"
+            do
+              eachName="\${allNames[\$index]}"
+              gunzip \${output_dir}/\${eachName}
+              msmsName=\${output_dir}/\${eachName}
+              msmsName=\${msmsName/.gz/}
+              /opt/comet.2018014.linux.exe -P ${msms_para_file} -N \$msmsName_rawResults -D ref.fasta \${msmsName}
+              sed -i '1d' \${msmsName}_rawResults.txt
+              sed -i '1 s/\$/\tna/' \${msmsName}_rawResults.txt
+            done
+          done
+        """
+      } else if (params.search_engine == 'xtandem'){
+        output_pattern = ".mzid"
+        """
+        # mzml_tar contains all mzml file
+        filename="exp_info.txt"
+        output_dir="exp_${experiment}"
+        mkdir -p \${output_dir}
+        tar -xvf ${mzml_tar} --strip-components 1
+        mv *.gz \${output_dir}
+        head -n 1 \$filename | while read -r sample experiment wxs_file_name wxs_file_location mzml_files mzml_path fusion
+        do 
+          IFS=';' read -r -a allNames <<< "\$mzml_files"
+          for index in "\${!allNames[@]}"
+          do
+            eachName="\${allNames[\$index]}"
+            gunzip \${output_dir}/\${eachName}
+            msmsName=\${output_dir}/\${eachName}
+            msmsName=\${msmsName/.gz/}
+            xml_input=\${msmsName}_input.xml
+            python3 /opt/neoflow/bin/generate_xtandem_para_xml.py ${msms_para_file} \${msmsName} ref.fasta \${msmsName} \${xml_input}
+            ## users must provide the main search parameter file for X!Tandem search
+            /opt/tandem-linux-17-02-01-4/bin/tandem.exe \${xml_input}
+            ## convert xml to mzid
+            java -Xmx${params.search_engine_mem}g -jar /opt/mzidlib-1.7/mzidlib-1.7.jar Tandem2mzid \
+              \${msmsName}.xml \
+              \${msmsName}.mzid \
+              -outputFragmentation false \
+              -decoyRegex XXX_ \
+              -databaseFileFormatID MS:1001348 \
+              -massSpecFileFormatID MS:1001062 \
+              -idsStartAtZero false \
+              -compress false \
+              -proteinCodeRegex "\\S+"
+            done
+          done
+        """
+      } else {
+        """
+        # exit with 1 if the search engine is not supported
+        exit 1
+        """
+      }
 }
 
 
