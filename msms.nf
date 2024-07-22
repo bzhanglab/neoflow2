@@ -98,7 +98,15 @@ process peptide_identification {
           filename="exp_info.txt"
           output_dir="exp_${experiment}"
           mkdir -p \${output_dir}
-          tar -xvf ${mzml_tar} --strip-components 1
+          ARCHIVE=${mzml_tar}
+          CONTENTS=\$(tar -tf "\$ARCHIVE")
+          # Check if the first entry in the archive is a directory
+          FIRST_ENTRY=\$(echo "\$CONTENTS" | head -n 1)
+          if [[ "\$FIRST_ENTRY" == */ ]]; then
+            tar -xvf "\$ARCHIVE" --strip-components 1
+          else
+            tar -xvf "\$ARCHIVE"
+          fi
           mv *.gz \${output_dir}
           head -n 1 \$filename | while read -r sample experiment wxs_file_name wxs_file_location mzml_files mzml_path fusion
           do 
@@ -126,7 +134,15 @@ process peptide_identification {
           filename="exp_info.txt"
           output_dir="exp_${experiment}"
           mkdir -p \${output_dir}
-          tar -xvf ${mzml_tar} --strip-components 1
+          ARCHIVE=${mzml_tar}
+          CONTENTS=\$(tar -tf "\$ARCHIVE")
+          # Check if the first entry in the archive is a directory
+          FIRST_ENTRY=\$(echo "\$CONTENTS" | head -n 1)
+          if [[ "\$FIRST_ENTRY" == */ ]]; then
+            tar -xvf "\$ARCHIVE" --strip-components 1
+          else
+            tar -xvf "\$ARCHIVE"
+          fi
           mv *.gz \${output_dir}
           head -n 1 \$filename | while read -r sample experiment wxs_file_name wxs_file_location mzml_files mzml_path fusion
           do 
@@ -150,7 +166,15 @@ process peptide_identification {
         filename="exp_info.txt"
         output_dir="exp_${experiment}"
         mkdir -p \${output_dir}
-        tar -xvf ${mzml_tar} --strip-components 1
+        ARCHIVE=${mzml_tar}
+        CONTENTS=\$(tar -tf "\$ARCHIVE")
+        # Check if the first entry in the archive is a directory
+        FIRST_ENTRY=\$(echo "\$CONTENTS" | head -n 1)
+        if [[ "\$FIRST_ENTRY" == */ ]]; then
+          tar -xvf "\$ARCHIVE" --strip-components 1
+        else
+          tar -xvf "\$ARCHIVE"
+        fi
         mv *.gz \${output_dir}
         head -n 1 \$filename | while read -r sample experiment wxs_file_name wxs_file_location mzml_files mzml_path fusion
         do 
